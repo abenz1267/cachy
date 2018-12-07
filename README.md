@@ -18,6 +18,13 @@ _ := c.Execute(w, nil, "folder/template", "folder/template") // io.Writer, data,
 
 As you can see this is pretty straightfoward.
 
+## Benchmarks
+
+```
+BenchmarkExecuteSingleTemplate-16    	 5000000	       338 ns/op	      96 B/op	       2 allocs/op
+BenchmarkExecuteDualTemplate-16    	 3000000	       432 ns/op	     144 B/op	       3 allocs/op
+```
+
 If you have suggestions or feedback, feel free to contact me!
 
 I hope this little library is useful to some.
