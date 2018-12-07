@@ -1,6 +1,7 @@
 package cachy
 
 import (
+	"errors"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -20,7 +21,8 @@ type Cachy struct {
 	stringTemplates map[string]string
 }
 
-// Init processes all templates and returns a populated Cachy struct
+// Init processes all templates and returns a populated Cachy struct.
+// You can provide template folders, otherwise it will scan the whole working dir for templates.
 func Init(tmplExt string, watch bool, funcs template.FuncMap, folders ...string) (c Cachy, err error) {
 	c.templates = make(map[string]*template.Template)
 	c.multiTmpls = make(map[string]*template.Template)
@@ -46,6 +48,10 @@ func Init(tmplExt string, watch bool, funcs template.FuncMap, folders ...string)
 
 // Execute executes the given template(s).
 func (c Cachy) Execute(w io.Writer, data interface{}, files ...string) (err error) {
+	if len(files) == 0 {
+		return errors.New("there are no templates to execute")
+	}
+
 	if len(files) == 1 {
 		c.templates[files[0]].Execute(w, data)
 		return
