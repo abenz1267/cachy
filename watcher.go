@@ -8,7 +8,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-func watch(folders []string, ext string, c *Cachy) {
+func watch(folders []string, ext string, c *Cachy, isPackr bool) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -41,11 +41,22 @@ func watch(folders []string, ext string, c *Cachy) {
 		}
 	}()
 
+	counter := 0
 	for _, v := range folders {
 		v = filepath.Join(wDir, v)
 		if err := watcher.Add(v); err != nil {
-			log.Fatalf("%s:%s", err, v)
+			if !isPackr {
+				log.Fatalf("Cachy: %s:%s", err, v)
+			} else {
+				log.Printf("Cachy: %s:%s", err, v)
+				counter++
+			}
 		}
+	}
+
+	if counter == len(folders) {
+		log.Println("Cachy: nothing to watch, closing watcher")
+		done <- true
 	}
 
 	log.Println("Cachy: Watching templates for changes...")
@@ -55,7 +66,7 @@ func watch(folders []string, ext string, c *Cachy) {
 
 func updateTmpl(path, ext string, c *Cachy) (err error) {
 	pathParts := strings.Split(path, "/")
-	if err = cache(c, filepath.Join(pathParts[:len(pathParts)-1]...), pathParts[len(pathParts)-1]+ext, ext); err != nil {
+	if err = cache(c, filepath.Join(pathParts[:len(pathParts)-1]...), pathParts[len(pathParts)-1]+ext, ext, nil); err != nil {
 		return
 	}
 

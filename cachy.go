@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/gobuffalo/packr/v2"
 )
 
 var wDir string
@@ -23,7 +25,7 @@ type Cachy struct {
 
 // Init processes all templates and returns a populated Cachy struct.
 // You can provide template folders, otherwise it will scan the whole working dir for templates.
-func Init(tmplExt string, enableWatcher bool, funcs template.FuncMap, folders ...string) (c Cachy, err error) {
+func Init(tmplExt string, enableWatcher bool, funcs template.FuncMap, boxes map[string]*packr.Box, folders ...string) (c Cachy, err error) {
 	c.templates = make(map[string]*template.Template)
 	c.multiTmpls = make(map[string]*template.Template)
 	c.stringTemplates = make(map[string]string)
@@ -34,18 +36,35 @@ func Init(tmplExt string, enableWatcher bool, funcs template.FuncMap, folders ..
 		return
 	}
 
-	if len(folders) == 0 {
-		log.Println("Cachy: no folders specified, walking whole directory...")
-		folders, err = walkDir(wDir)
+	var isPackr bool
+
+	if boxes == nil {
+		if len(folders) == 0 {
+			log.Println("Cachy: no folders specified, walking whole directory...")
+			folders, err = walkDir(wDir)
+			if err != nil {
+				return
+			}
+		}
+
+		err = load(tmplExt, &c, folders)
+		if err != nil {
+			return
+		}
+	} else {
+		isPackr = true
+		for k := range boxes {
+			folders = append(folders, k)
+		}
+
+		err = loadBoxes(boxes, tmplExt, &c)
 		if err != nil {
 			return
 		}
 	}
 
-	err = load(tmplExt, &c, folders)
-
 	if enableWatcher {
-		go watch(folders, tmplExt, &c)
+		go watch(folders, tmplExt, &c, isPackr)
 	}
 
 	return
@@ -103,7 +122,7 @@ func load(tmplExt string, c *Cachy, folders []string) (err error) {
 	for k, v := range dirs {
 		for _, file := range v {
 			if !file.IsDir() && strings.HasSuffix(file.Name(), tmplExt) {
-				if err := cache(c, k, file.Name(), tmplExt); err != nil {
+				if err := cache(c, k, file.Name(), tmplExt, nil); err != nil {
 					return err
 				}
 			}
@@ -113,24 +132,56 @@ func load(tmplExt string, c *Cachy, folders []string) (err error) {
 	return
 }
 
-func cache(c *Cachy, path, file, tmplExt string) (err error) {
-	// parse template and cache it
-	tmpl, err := template.New(file).Funcs(c.funcs).ParseFiles(filepath.Join(wDir, path, file))
-	if err != nil {
-		return err
+func loadBoxes(boxes map[string]*packr.Box, tmplExt string, c *Cachy) (err error) {
+	for _, v := range boxes {
+		for _, f := range v.List() {
+			err = cache(c, "", f, tmplExt, v)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
-	clearPath := filepath.Join(strings.TrimPrefix(path, "/"), strings.TrimSuffix(file, tmplExt))
+	return
+}
+
+func cache(c *Cachy, path, file, tmplExt string, box *packr.Box) (err error) {
+	var tmpl *template.Template
+	var clearPath string
+	var tmplString string
+
+	if box == nil {
+		// parse template and cache it
+		tmpl, err = template.New(file).Funcs(c.funcs).ParseFiles(filepath.Join(wDir, path, file))
+		if err != nil {
+			return err
+		}
+
+		clearPath = filepath.Join(strings.TrimPrefix(path, "/"), strings.TrimSuffix(file, tmplExt))
+
+		// parse string representation of template and cache it
+		b, err := ioutil.ReadFile(filepath.Join(wDir, path, file))
+		if err != nil {
+			return err
+		}
+
+		tmplString = string(b)
+	} else {
+		tmplString, err = box.FindString(file)
+		if err != nil {
+			return err
+		}
+		tmpl, err = template.New(file).Funcs(c.funcs).Parse(tmplString)
+		if err != nil {
+			return err
+		}
+
+		clearPath = filepath.Join(box.Name, strings.TrimSuffix(file, tmplExt))
+	}
 
 	c.templates[clearPath] = tmpl
 
-	// parse string representation of template and cache it
-	b, err := ioutil.ReadFile(filepath.Join(wDir, path, file))
-	if err != nil {
-		return err
-	}
-
-	c.stringTemplates[clearPath] = string(b)
+	c.stringTemplates[clearPath] = tmplString
 
 	return
 }
