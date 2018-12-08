@@ -25,27 +25,33 @@ func TestLoad(t *testing.T) {
 }
 
 func BenchmarkExecuteSingleTemplate(b *testing.B) {
-	c, err := Init(".html", false, nil)
+	c, err := Init(".html", false, nil, "test_templates")
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	var w bytes.Buffer
 	for n := 0; n < b.N; n++ {
-		c.Execute(&w, nil, "test_templates/base")
+		err := c.Execute(&w, nil, "test_templates/base")
+		if err != nil {
+			b.Error(err)
+		}
 		w.Reset()
 	}
 }
 
 func BenchmarkExecuteDualTemplate(b *testing.B) {
-	c, err := Init(".html", false, nil)
+	c, err := Init(".html", false, nil, "test_templates")
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	var w bytes.Buffer
 	for n := 0; n < b.N; n++ {
-		c.Execute(&w, nil, "test_templates/base", "test_templates/index")
+		err := c.Execute(&w, nil, "test_templates/base", "test_templates/index")
+		if err != nil {
+			b.Error(err)
+		}
 		w.Reset()
 	}
 }

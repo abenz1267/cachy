@@ -58,8 +58,7 @@ func (c *Cachy) Execute(w io.Writer, data interface{}, files ...string) (err err
 	}
 
 	if len(files) == 1 {
-		c.templates[files[0]].Execute(w, data)
-		return
+		return c.templates[files[0]].Execute(w, data)
 	}
 
 	templates := strings.Join(files, ",")
@@ -73,9 +72,7 @@ func (c *Cachy) Execute(w io.Writer, data interface{}, files ...string) (err err
 		return
 	}
 
-	c.multiTmpls[templates].Execute(w, data)
-
-	return
+	return c.multiTmpls[templates].Execute(w, data)
 }
 
 func parseMultiple(c *Cachy, files []string) (tmpl *template.Template, err error) {
