@@ -9,8 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/fsnotify/fsnotify"
 )
 
 var wDir string
@@ -25,7 +23,7 @@ type Cachy struct {
 
 // Init processes all templates and returns a populated Cachy struct.
 // You can provide template folders, otherwise it will scan the whole working dir for templates.
-func Init(tmplExt string, watch bool, funcs template.FuncMap, folders ...string) (c Cachy, err error) {
+func Init(tmplExt string, enableWatcher bool, funcs template.FuncMap, folders ...string) (c Cachy, err error) {
 	c.templates = make(map[string]*template.Template)
 	c.multiTmpls = make(map[string]*template.Template)
 	c.stringTemplates = make(map[string]string)
@@ -37,16 +35,17 @@ func Init(tmplExt string, watch bool, funcs template.FuncMap, folders ...string)
 	}
 
 	if len(folders) == 0 {
+		log.Println("Cachy: no folders specified, walking whole directory...")
 		folders, err = walkDir(wDir)
 		if err != nil {
 			return
 		}
 	}
 
-	err = load(tmplExt, watch, &c, funcs, folders)
+	err = load(tmplExt, &c, folders)
 
-	if watch {
-		go monitor(folders, tmplExt, &c)
+	if enableWatcher {
+		go watch(folders, tmplExt, &c)
 	}
 
 	return
@@ -55,7 +54,7 @@ func Init(tmplExt string, watch bool, funcs template.FuncMap, folders ...string)
 // Execute executes the given template(s).
 func (c *Cachy) Execute(w io.Writer, data interface{}, files ...string) (err error) {
 	if len(files) == 0 {
-		return errors.New("there are no templates to execute")
+		return errors.New("Cachy: there are no templates to execute")
 	}
 
 	if len(files) == 1 {
@@ -69,27 +68,31 @@ func (c *Cachy) Execute(w io.Writer, data interface{}, files ...string) (err err
 		return val.Execute(w, data)
 	}
 
-	c.multiTmpls[templates] = parseMultiple(c, files)
+	c.multiTmpls[templates], err = parseMultiple(c, files)
+	if err != nil {
+		return
+	}
+
 	c.multiTmpls[templates].Execute(w, data)
 
 	return
 }
 
-func parseMultiple(c *Cachy, files []string) (tmpl *template.Template) {
+func parseMultiple(c *Cachy, files []string) (tmpl *template.Template, err error) {
 	tmpl = template.New("tmpl").Funcs(c.funcs)
 
 	for _, v := range files {
 		if val, exists := c.stringTemplates[v]; exists {
-			tmpl.Parse(val)
+			_, err = tmpl.Parse(val)
 		} else {
-			log.Fatalf("There is no template '%s'", v)
+			log.Fatalf("Cachy: there is no template '%s'", v)
 		}
 	}
 
 	return
 }
 
-func load(tmplExt string, watch bool, c *Cachy, funcs template.FuncMap, folders []string) (err error) {
+func load(tmplExt string, c *Cachy, folders []string) (err error) {
 	dirs := make(map[string][]os.FileInfo)
 	for _, v := range folders {
 		files, err := ioutil.ReadDir(filepath.Join(wDir, v))
@@ -138,7 +141,7 @@ func cache(c *Cachy, path, file, tmplExt string) (err error) {
 func walkDir(root string) ([]string, error) {
 	var files []string
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() && !strings.Contains(path, ".git") {
+		if info.IsDir() && !strings.Contains(path, "/.") {
 			if !strings.Contains(info.Name(), ".") {
 				files = append(files, strings.TrimPrefix(path, root))
 			}
@@ -147,68 +150,4 @@ func walkDir(root string) ([]string, error) {
 	})
 
 	return files, err
-}
-
-func monitor(folders []string, ext string, c *Cachy) {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer watcher.Close()
-
-	done := make(chan bool)
-
-	go func() {
-		for {
-			select {
-			case event := <-watcher.Events:
-				if strings.Contains(event.Name, ext) {
-					clearName := strings.TrimPrefix(strings.TrimSuffix(event.Name, ext), wDir+"/")
-
-					if event.Op == fsnotify.Write || event.Op == fsnotify.Create {
-						event.Name = strings.TrimPrefix(event.Name, wDir)
-
-						path := strings.Split(event.Name, "/")
-						err := cache(c, filepath.Join(path[:len(path)-1]...), path[len(path)-1], ext)
-						if err != nil {
-							log.Printf("Couldn't cache template: %s", err)
-						} else {
-							log.Printf("updated template file: %s\n", event.Name)
-						}
-
-						for k := range c.multiTmpls {
-							if strings.Contains(k, clearName) {
-								files := strings.Split(k, ",")
-								c.multiTmpls[k] = parseMultiple(c, files)
-							}
-						}
-					} else if event.Op == fsnotify.Remove || event.Op == fsnotify.Rename {
-						if _, exists := c.stringTemplates[clearName]; exists {
-							log.Printf("deleting template from cache: %s\n", clearName)
-							delete(c.stringTemplates, clearName)
-							delete(c.templates, clearName)
-						}
-
-						for k := range c.multiTmpls {
-							if strings.Contains(k, clearName) {
-								delete(c.multiTmpls, k)
-							}
-						}
-					}
-				}
-
-			case err := <-watcher.Errors:
-				log.Println(err)
-			}
-		}
-	}()
-
-	for _, v := range folders {
-		v = filepath.Join(wDir, v)
-		if err := watcher.Add(v); err != nil {
-			log.Fatalf("%s:%s", err, v)
-		}
-	}
-
-	<-done
 }
