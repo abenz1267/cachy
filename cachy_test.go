@@ -18,12 +18,6 @@ func TestLoad(t *testing.T) {
 	}
 
 	b.Reset()
-	err = c.Execute(&b, nil, "test_templates/base", "test_templates/index")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	b.Reset()
 	err = c.Execute(&b, nil, "test_templates/base")
 	if err != nil {
 		t.Fatal(err)
