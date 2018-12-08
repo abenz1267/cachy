@@ -1,9 +1,11 @@
-# Cachy - Template Caching Library
+# Cachy - HTML Template Caching Library
+
+Cachy is a simple caching library for templates using Go's html/template package.
 
 ## Features
-- accepts explicit folders or scans/watches whole working dir
-- single templates
-- multiple templates (as with ParseFiles("file1", "file2"...))
+- accepts explicit folders or scans/watches complete directory
+- execute single templates
+- execute multiple templates (as with ParseFiles("file1", "file2"...))
 - filewatcher that updates the cache on template changes
 
 ## Usage
@@ -13,7 +15,7 @@ Example:
 ```go
 c, _ := cachy.Init(".html", true, nil) // this will process all *.html files, activate the filewatcher, no FuncMap.
 
-_ := c.Execute(w, nil, "folder/template", "folder/template") // io.Writer, data, templates...
+_ := c.Execute(w, nil, "folder/template", "folder/template2") // io.Writer, data, templates...
 ```
 
 As you can see this is pretty straightfoward.
