@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/gobuffalo/packr/v2"
+	"github.com/tdewolff/minify"
+	"github.com/tdewolff/minify/html"
 )
 
 var wDir string
@@ -148,40 +150,38 @@ func loadBoxes(boxes map[string]*packr.Box, tmplExt string, c *Cachy) (err error
 func cache(c *Cachy, path, file, tmplExt string, box *packr.Box) (err error) {
 	var tmpl *template.Template
 	var clearPath string
-	var tmplString string
+	var tmplBytes []byte
 
 	if box == nil {
-		// parse template and cache it
-		tmpl, err = template.New(file).Funcs(c.funcs).ParseFiles(filepath.Join(wDir, path, file))
-		if err != nil {
-			return err
-		}
-
 		clearPath = filepath.Join(strings.TrimPrefix(path, "/"), strings.TrimSuffix(file, tmplExt))
-
-		// parse string representation of template and cache it
-		b, err := ioutil.ReadFile(filepath.Join(wDir, path, file))
+		tmplBytes, err = ioutil.ReadFile(filepath.Join(wDir, path, file))
 		if err != nil {
 			return err
 		}
-
-		tmplString = string(b)
 	} else {
-		tmplString, err = box.FindString(file)
-		if err != nil {
-			return err
-		}
-		tmpl, err = template.New(file).Funcs(c.funcs).Parse(tmplString)
-		if err != nil {
-			return err
-		}
-
 		clearPath = filepath.Join(box.Name, strings.TrimSuffix(file, tmplExt))
+		tmplBytes, err = box.Find(file)
+		if err != nil {
+			return err
+		}
+	}
+
+	m := minify.New()
+	m.AddFunc("text/html", html.Minify)
+
+	tmplBytes, err = m.Bytes("text/html", tmplBytes)
+	if err != nil {
+		return err
+	}
+
+	c.stringTemplates[clearPath] = string(tmplBytes)
+
+	tmpl, err = template.New(file).Funcs(c.funcs).Parse(c.stringTemplates[clearPath])
+	if err != nil {
+		return err
 	}
 
 	c.templates[clearPath] = tmpl
-
-	c.stringTemplates[clearPath] = tmplString
 
 	return
 }
