@@ -2,6 +2,7 @@ package cachy
 
 import (
 	"errors"
+	"fmt"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -103,7 +104,7 @@ func parseMultiple(c *Cachy, files []string) (tmpl *template.Template, err error
 		if val, exists := c.stringTemplates[v]; exists {
 			_, err = tmpl.Parse(val)
 		} else {
-			log.Fatalf("Cachy: there is no template '%s'", v)
+			return nil, errors.New(fmt.Sprintf("Cachy: there is no template '%s'", v))
 		}
 	}
 
