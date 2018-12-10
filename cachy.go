@@ -39,8 +39,6 @@ func Init(tmplExt string, enableWatcher bool, funcs template.FuncMap, boxes map[
 		return
 	}
 
-	var isPackr bool
-
 	if boxes == nil {
 		if len(folders) == 0 {
 			log.Println("Cachy: no folders specified, walking whole directory...")
@@ -55,7 +53,6 @@ func Init(tmplExt string, enableWatcher bool, funcs template.FuncMap, boxes map[
 			return
 		}
 	} else {
-		isPackr = true
 		for k := range boxes {
 			folders = append(folders, k)
 		}
@@ -67,7 +64,7 @@ func Init(tmplExt string, enableWatcher bool, funcs template.FuncMap, boxes map[
 	}
 
 	if enableWatcher {
-		go watch(folders, tmplExt, &c, isPackr)
+		go watch(folders, tmplExt, &c)
 	}
 
 	return

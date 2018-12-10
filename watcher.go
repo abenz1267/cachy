@@ -8,7 +8,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-func watch(folders []string, ext string, c *Cachy, isPackr bool) {
+func watch(folders []string, ext string, c *Cachy) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -45,12 +45,8 @@ func watch(folders []string, ext string, c *Cachy, isPackr bool) {
 	for _, v := range folders {
 		v = filepath.Join(wDir, v)
 		if err := watcher.Add(v); err != nil {
-			if !isPackr {
-				log.Fatalf("Cachy: %s:%s", err, v)
-			} else {
-				log.Printf("Cachy: %s:%s", err, v)
-				counter++
-			}
+			log.Printf("Cachy: %s:%s", err, v)
+			counter++
 		}
 	}
 
