@@ -26,9 +26,9 @@ type Cachy struct {
 	stringTemplates map[string]string
 }
 
-// Init processes all templates and returns a populated Cachy struct.
+// New processes all templates and returns a populated Cachy struct.
 // You can provide template folders, otherwise it will scan the whole working dir for templates.
-func Init(tmplExt string, enableWatcher bool, funcs template.FuncMap, boxes map[string]*packr.Box, folders ...string) (c Cachy, err error) {
+func New(tmplExt string, enableWatcher bool, funcs template.FuncMap, boxes map[string]*packr.Box, folders ...string) (c Cachy, err error) {
 	c.templates = make(map[string]*template.Template)
 	c.multiTmpls = make(map[string]*template.Template)
 	c.stringTemplates = make(map[string]string)
@@ -39,20 +39,21 @@ func Init(tmplExt string, enableWatcher bool, funcs template.FuncMap, boxes map[
 		return
 	}
 
-	if boxes == nil {
-		if len(folders) == 0 {
-			log.Println("Cachy: no folders specified, walking whole directory...")
-			folders, err = walkDir(wDir)
-			if err != nil {
-				return
-			}
+	if len(folders) == 0 && boxes == nil {
+		log.Println("Cachy: no folders or Packr boxes provided, walking whole directory...")
+		folders, err = walkDir(wDir)
+		if err != nil {
+			return
 		}
+	}
 
+	switch boxes {
+	case nil:
 		err = load(tmplExt, &c, folders)
 		if err != nil {
 			return
 		}
-	} else {
+	default:
 		for k := range boxes {
 			folders = append(folders, k)
 		}
@@ -72,14 +73,19 @@ func Init(tmplExt string, enableWatcher bool, funcs template.FuncMap, boxes map[
 
 // Execute executes the given template(s).
 func (c *Cachy) Execute(w io.Writer, data interface{}, files ...string) (err error) {
-	if len(files) == 0 {
+	switch len := len(files); {
+	case len == 0:
 		return errors.New("Cachy: there are no templates to execute")
-	}
-
-	if len(files) == 1 {
+	case len == 1:
 		return c.templates[files[0]].Execute(w, data)
+	case len > 1:
+		return executeMultiple(w, c, data, files)
 	}
 
+	return
+}
+
+func executeMultiple(w io.Writer, c *Cachy, data interface{}, files []string) (err error) {
 	templates := strings.Join(files, ",")
 
 	if val, exists := c.multiTmpls[templates]; exists {
