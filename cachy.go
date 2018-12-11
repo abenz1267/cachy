@@ -23,6 +23,8 @@ type Cachy struct {
 	templates       map[string]*template.Template
 	multiTmpls      map[string]*template.Template
 	stringTemplates map[string]string
+	folders         []string
+	ext             string
 }
 
 // New processes all templates and returns a populated Cachy struct.
@@ -32,28 +34,34 @@ func New(tmplExt string, enableWatcher bool, funcs template.FuncMap, boxes map[s
 	c.multiTmpls = make(map[string]*template.Template)
 	c.stringTemplates = make(map[string]string)
 	c.funcs = funcs
+	c.ext = tmplExt
 
 	wDir, err = os.Getwd()
 	if err != nil {
 		return
 	}
 
-	if len(folders) == 0 && boxes == nil {
+	// set folders
+	switch {
+	case len(folders) == 0 && boxes == nil:
 		folders, err = walkDir(wDir)
 		if err != nil {
 			return
 		}
-	}
-
-	switch boxes {
-	case nil:
-		return c, load(tmplExt, &c, folders)
-	default:
+	case boxes != nil:
 		for k := range boxes {
 			folders = append(folders, k)
 		}
+	}
 
-		return c, loadBoxes(boxes, tmplExt, &c)
+	c.folders = folders
+
+	// cache templates
+	switch boxes {
+	case nil:
+		return c, c.load()
+	default:
+		return c, c.loadBoxes(boxes)
 	}
 }
 
@@ -65,20 +73,20 @@ func (c *Cachy) Execute(w io.Writer, data interface{}, files ...string) (err err
 	case len == 1:
 		return c.templates[files[0]].Execute(w, data)
 	case len > 1:
-		return executeMultiple(w, c, data, files)
+		return c.executeMultiple(w, data, files)
 	}
 
 	return
 }
 
-func executeMultiple(w io.Writer, c *Cachy, data interface{}, files []string) (err error) {
+func (c *Cachy) executeMultiple(w io.Writer, data interface{}, files []string) (err error) {
 	templates := strings.Join(files, ",")
 
 	if val, exists := c.multiTmpls[templates]; exists {
 		return val.Execute(w, data)
 	}
 
-	c.multiTmpls[templates], err = parseMultiple(c, files)
+	c.multiTmpls[templates], err = c.parseMultiple(files)
 	if err != nil {
 		return
 	}
@@ -86,7 +94,7 @@ func executeMultiple(w io.Writer, c *Cachy, data interface{}, files []string) (e
 	return c.multiTmpls[templates].Execute(w, data)
 }
 
-func parseMultiple(c *Cachy, files []string) (tmpl *template.Template, err error) {
+func (c *Cachy) parseMultiple(files []string) (tmpl *template.Template, err error) {
 	tmpl = template.New("tmpl").Funcs(c.funcs)
 
 	for _, v := range files {
@@ -100,9 +108,9 @@ func parseMultiple(c *Cachy, files []string) (tmpl *template.Template, err error
 	return
 }
 
-func load(tmplExt string, c *Cachy, folders []string) (err error) {
+func (c *Cachy) load() (err error) {
 	dirs := make(map[string][]os.FileInfo)
-	for _, v := range folders {
+	for _, v := range c.folders {
 		files, err := ioutil.ReadDir(filepath.Join(wDir, v))
 		if err != nil {
 			return err
@@ -113,8 +121,8 @@ func load(tmplExt string, c *Cachy, folders []string) (err error) {
 
 	for k, v := range dirs {
 		for _, file := range v {
-			if !file.IsDir() && strings.HasSuffix(file.Name(), tmplExt) {
-				if err := cache(c, k, file.Name(), tmplExt, nil); err != nil {
+			if !file.IsDir() && strings.HasSuffix(file.Name(), c.ext) {
+				if err := c.cache(k, file.Name(), nil); err != nil {
 					return err
 				}
 			}
@@ -124,10 +132,10 @@ func load(tmplExt string, c *Cachy, folders []string) (err error) {
 	return
 }
 
-func loadBoxes(boxes map[string]*packr.Box, tmplExt string, c *Cachy) (err error) {
+func (c *Cachy) loadBoxes(boxes map[string]*packr.Box) (err error) {
 	for _, v := range boxes {
 		for _, f := range v.List() {
-			err = cache(c, "", f, tmplExt, v)
+			err = c.cache("", f, v)
 			if err != nil {
 				return err
 			}
@@ -137,19 +145,19 @@ func loadBoxes(boxes map[string]*packr.Box, tmplExt string, c *Cachy) (err error
 	return
 }
 
-func cache(c *Cachy, path, file, tmplExt string, box *packr.Box) (err error) {
+func (c *Cachy) cache(path, file string, box *packr.Box) (err error) {
 	var tmpl *template.Template
 	var clearPath string
 	var tmplBytes []byte
 
 	if box == nil {
-		clearPath = filepath.Join(strings.TrimPrefix(path, "/"), strings.TrimSuffix(file, tmplExt))
+		clearPath = filepath.Join(strings.TrimPrefix(path, "/"), strings.TrimSuffix(file, c.ext))
 		tmplBytes, err = ioutil.ReadFile(filepath.Join(wDir, path, file))
 		if err != nil {
 			return err
 		}
 	} else {
-		clearPath = filepath.Join(box.Name, strings.TrimSuffix(file, tmplExt))
+		clearPath = filepath.Join(box.Name, strings.TrimSuffix(file, c.ext))
 		tmplBytes, err = box.Find(file)
 		if err != nil {
 			return err

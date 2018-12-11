@@ -8,7 +8,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-func Watch(folders []string, ext string, c *Cachy) {
+func (c *Cachy) Watch() {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -21,11 +21,11 @@ func Watch(folders []string, ext string, c *Cachy) {
 		for {
 			select {
 			case event := <-watcher.Events:
-				if strings.Contains(event.Name, ext) {
-					clearPath := strings.TrimPrefix(strings.TrimSuffix(event.Name, ext), wDir+"/")
+				if strings.Contains(event.Name, c.ext) {
+					clearPath := strings.TrimPrefix(strings.TrimSuffix(event.Name, c.ext), wDir+"/")
 
 					if event.Op == fsnotify.Write || event.Op == fsnotify.Create {
-						if err := updateTmpl(clearPath, ext, c); err != nil {
+						if err := c.updateTmpl(clearPath); err != nil {
 							log.Printf("Cachy: couldn't cache template: %s", err)
 						} else {
 							log.Printf("Cachy: updated template file: %s\n", clearPath)
@@ -42,7 +42,7 @@ func Watch(folders []string, ext string, c *Cachy) {
 	}()
 
 	counter := 0
-	for _, v := range folders {
+	for _, v := range c.folders {
 		v = filepath.Join(wDir, v)
 		if err := watcher.Add(v); err != nil {
 			log.Printf("Cachy: %s:%s", err, v)
@@ -50,7 +50,7 @@ func Watch(folders []string, ext string, c *Cachy) {
 		}
 	}
 
-	if counter == len(folders) {
+	if counter == len(c.folders) {
 		log.Println("Cachy: nothing to watch, closing watcher")
 		done <- true
 	}
@@ -60,16 +60,16 @@ func Watch(folders []string, ext string, c *Cachy) {
 	<-done
 }
 
-func updateTmpl(path, ext string, c *Cachy) (err error) {
+func (c *Cachy) updateTmpl(path string) (err error) {
 	pathParts := strings.Split(path, "/")
-	if err = cache(c, filepath.Join(pathParts[:len(pathParts)-1]...), pathParts[len(pathParts)-1]+ext, ext, nil); err != nil {
+	if err = c.cache(filepath.Join(pathParts[:len(pathParts)-1]...), pathParts[len(pathParts)-1]+c.ext, nil); err != nil {
 		return
 	}
 
 	for k := range c.multiTmpls {
 		if strings.Contains(k, path) {
 			files := strings.Split(k, ",")
-			c.multiTmpls[k], err = parseMultiple(c, files)
+			c.multiTmpls[k], err = c.parseMultiple(files)
 			if err != nil {
 				return
 			}

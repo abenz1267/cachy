@@ -20,7 +20,7 @@ func TestUpdateTmpl(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = updateTmpl("test_templates/index", ".html", &c)
+	err = c.updateTmpl("test_templates/index")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,10 +29,12 @@ func TestUpdateTmpl(t *testing.T) {
 }
 
 func TestWatch(t *testing.T) {
-	_, err := New(".html", true, nil, nil)
+	c, err := New(".html", true, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	go c.Watch()
 
 	data := []byte("new template")
 
