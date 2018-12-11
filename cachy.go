@@ -6,7 +6,6 @@ import (
 	"html/template"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,7 +39,6 @@ func New(tmplExt string, enableWatcher bool, funcs template.FuncMap, boxes map[s
 	}
 
 	if len(folders) == 0 && boxes == nil {
-		log.Println("Cachy: no folders or Packr boxes provided, walking whole directory...")
 		folders, err = walkDir(wDir)
 		if err != nil {
 			return
@@ -49,26 +47,14 @@ func New(tmplExt string, enableWatcher bool, funcs template.FuncMap, boxes map[s
 
 	switch boxes {
 	case nil:
-		err = load(tmplExt, &c, folders)
-		if err != nil {
-			return
-		}
+		return c, load(tmplExt, &c, folders)
 	default:
 		for k := range boxes {
 			folders = append(folders, k)
 		}
 
-		err = loadBoxes(boxes, tmplExt, &c)
-		if err != nil {
-			return
-		}
+		return c, loadBoxes(boxes, tmplExt, &c)
 	}
-
-	if enableWatcher {
-		go watch(folders, tmplExt, &c)
-	}
-
-	return
 }
 
 // Execute executes the given template(s).

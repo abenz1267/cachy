@@ -8,7 +8,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-func watch(folders []string, ext string, c *Cachy) {
+func Watch(folders []string, ext string, c *Cachy) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
