@@ -11,8 +11,6 @@ import (
 	"strings"
 
 	"github.com/gobuffalo/packr/v2"
-	"github.com/tdewolff/minify"
-	"github.com/tdewolff/minify/html"
 )
 
 var wDir string
@@ -162,14 +160,6 @@ func (c *Cachy) cache(path, file string, box *packr.Box) (err error) {
 		if err != nil {
 			return err
 		}
-	}
-
-	m := minify.New()
-	m.AddFunc("text/html", html.Minify)
-
-	tmplBytes, err = m.Bytes("text/html", tmplBytes)
-	if err != nil {
-		return err
 	}
 
 	c.stringTemplates[clearPath] = string(tmplBytes)
