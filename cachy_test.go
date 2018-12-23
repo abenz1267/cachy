@@ -41,6 +41,17 @@ func TestLoadWithPackr(t *testing.T) {
 	}
 }
 
+func TestGetString(t *testing.T) {
+	c, err := New(".html", false, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if c.GetString("test_templates/index") == "" {
+		t.Fatal("couldn't get template string")
+	}
+}
+
 func BenchmarkExecuteSingleTemplate(b *testing.B) {
 	c, err := New(".html", false, nil, nil, "test_templates")
 	if err != nil {

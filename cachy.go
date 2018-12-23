@@ -77,6 +77,10 @@ func (c *Cachy) Execute(w io.Writer, data interface{}, files ...string) (err err
 	return
 }
 
+func (c *Cachy) GetString(file string) string {
+	return c.stringTemplates[file]
+}
+
 func (c *Cachy) executeMultiple(w io.Writer, data interface{}, files []string) (err error) {
 	templates := strings.Join(files, ",")
 
