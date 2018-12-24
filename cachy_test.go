@@ -8,7 +8,7 @@ import (
 )
 
 func TestLoad(t *testing.T) {
-	c, err := New(".html", false, nil, nil)
+	c, err := New(".html", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func TestLoad(t *testing.T) {
 func TestLoadWithPackr(t *testing.T) {
 	boxes := make(map[string]*packr.Box)
 	boxes["test_templates"] = packr.New("test_templates", "./test_templates")
-	c, err := New(".html", false, nil, boxes)
+	c, err := New(".html", nil, boxes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestLoadWithPackr(t *testing.T) {
 }
 
 func TestGetString(t *testing.T) {
-	c, err := New(".html", false, nil, nil)
+	c, err := New(".html", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestGetString(t *testing.T) {
 }
 
 func BenchmarkExecuteSingleTemplate(b *testing.B) {
-	c, err := New(".html", false, nil, nil, "test_templates")
+	c, err := New(".html", nil, nil, "test_templates")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func BenchmarkExecuteSingleTemplate(b *testing.B) {
 }
 
 func BenchmarkExecuteDualTemplate(b *testing.B) {
-	c, err := New(".html", false, nil, nil, "test_templates")
+	c, err := New(".html", nil, nil, "test_templates")
 	if err != nil {
 		b.Fatal(err)
 	}

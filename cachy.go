@@ -27,7 +27,7 @@ type Cachy struct {
 
 // New processes all templates and returns a populated Cachy struct.
 // You can provide template folders, otherwise it will scan the whole working dir for templates.
-func New(tmplExt string, enableWatcher bool, funcs template.FuncMap, boxes map[string]*packr.Box, folders ...string) (c Cachy, err error) {
+func New(tmplExt string, funcs template.FuncMap, boxes map[string]*packr.Box, folders ...string) (c Cachy, err error) {
 	c.templates = make(map[string]*template.Template)
 	c.multiTmpls = make(map[string]*template.Template)
 	c.stringTemplates = make(map[string]string)

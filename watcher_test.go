@@ -9,7 +9,7 @@ import (
 )
 
 func TestUpdateTmpl(t *testing.T) {
-	c, err := New(".html", false, nil, nil, "test_templates")
+	c, err := New(".html", nil, nil, "test_templates")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func TestUpdateTmpl(t *testing.T) {
 }
 
 func TestWatch(t *testing.T) {
-	c, err := New(".html", true, nil, nil)
+	c, err := New(".html", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
