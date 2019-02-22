@@ -25,7 +25,7 @@ func TestUpdateTmpl(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	deleteTmpl("test_templates/index", &c)
+	deleteTmpl("test_templates/index", c)
 }
 
 func TestWatch(t *testing.T) {
