@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -66,6 +67,10 @@ func New(tmplExt string, funcs template.FuncMap, boxes map[string]*packr.Box, fo
 
 // Execute executes the given template(s).
 func (c *Cachy) Execute(w io.Writer, data interface{}, files ...string) (err error) {
+	if v, ok := w.(http.ResponseWriter); ok {
+		v.Header().Set("Content-Type", "text/html")
+	}
+
 	switch len := len(files); {
 	case len == 0:
 		return errors.New("Cachy: there are no templates to execute")
