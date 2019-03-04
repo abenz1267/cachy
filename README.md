@@ -27,6 +27,7 @@ _ := c.Execute(w, nil, "folder/template", "folder/template2") // io.Writer, data
 ...
 
 go c.Watch("wss://localhost:3000/ws")
+http.HandleFunc("/ws", c.HotReload)
 
 ...
 ```
