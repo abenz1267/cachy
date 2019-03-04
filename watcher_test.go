@@ -20,6 +20,10 @@ func TestUpdateTmpl(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	go func() {
+		<-c.wsChan
+	}()
+
 	err = c.updateTmpl("test_templates/index")
 	if err != nil {
 		t.Fatal(err)
@@ -34,7 +38,7 @@ func TestWatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	go c.Watch()
+	go c.Watch("ws://someurl/ws")
 
 	data := []byte("new template")
 

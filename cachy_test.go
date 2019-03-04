@@ -2,13 +2,19 @@ package cachy
 
 import (
 	"bytes"
+	"html/template"
 	"testing"
 
 	"github.com/gobuffalo/packr/v2"
 )
 
 func TestLoad(t *testing.T) {
-	c, err := New(".html", nil, nil)
+	funcs := template.FuncMap{}
+	funcs["test"] = func() string {
+		return "test"
+	}
+
+	c, err := New(".html", funcs, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

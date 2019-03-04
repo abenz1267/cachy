@@ -6,13 +6,17 @@ import (
 	"html/template"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/gobuffalo/packr/v2"
+	"github.com/gorilla/websocket"
 )
+
+var upgrader = websocket.Upgrader{}
 
 var wDir string
 
@@ -24,6 +28,7 @@ type Cachy struct {
 	stringTemplates map[string]string
 	folders         []string
 	ext             string
+	wsChan          chan bool
 }
 
 // New processes all templates and returns a populated Cachy struct.
@@ -33,8 +38,20 @@ func New(tmplExt string, funcs template.FuncMap, boxes map[string]*packr.Box, fo
 	c.templates = make(map[string]*template.Template)
 	c.multiTmpls = make(map[string]*template.Template)
 	c.stringTemplates = make(map[string]string)
-	c.funcs = funcs
 	c.ext = tmplExt
+	c.wsChan = make(chan bool)
+	c.funcs = template.FuncMap{}
+	c.funcs["ws"] = func() string {
+		return "no websocket URL defined..."
+	}
+
+	for k, v := range funcs {
+		if _, exists := c.funcs[k]; exists {
+			log.Fatalf("Cachy: function '%s' already exists!", k)
+		} else {
+			c.funcs[k] = v
+		}
+	}
 
 	wDir, err = os.Getwd()
 	if err != nil {
@@ -130,7 +147,7 @@ func (c *Cachy) load() (err error) {
 	for k, v := range dirs {
 		for _, file := range v {
 			if !file.IsDir() && strings.HasSuffix(file.Name(), c.ext) {
-				if err := c.cache(k, file.Name(), nil); err != nil {
+				if _, err := c.cache(k, file.Name(), nil); err != nil {
 					return err
 				}
 			}
@@ -143,7 +160,7 @@ func (c *Cachy) load() (err error) {
 func (c *Cachy) loadBoxes(boxes map[string]*packr.Box) (err error) {
 	for _, v := range boxes {
 		for _, f := range v.List() {
-			err = c.cache("", f, v)
+			_, err = c.cache("", f, v)
 			if err != nil {
 				return err
 			}
@@ -153,7 +170,7 @@ func (c *Cachy) loadBoxes(boxes map[string]*packr.Box) (err error) {
 	return
 }
 
-func (c *Cachy) cache(path, file string, box *packr.Box) (err error) {
+func (c *Cachy) cache(path, file string, box *packr.Box) (length int, err error) {
 	var tmpl *template.Template
 	var clearPath string
 	var tmplBytes []byte
@@ -162,13 +179,13 @@ func (c *Cachy) cache(path, file string, box *packr.Box) (err error) {
 		clearPath = filepath.Join(strings.TrimPrefix(path, "/"), strings.TrimSuffix(file, c.ext))
 		tmplBytes, err = ioutil.ReadFile(filepath.Join(wDir, path, file))
 		if err != nil {
-			return err
+			return len(tmplBytes), err
 		}
 	} else {
 		clearPath = filepath.Join(box.Name, strings.TrimSuffix(file, c.ext))
 		tmplBytes, err = box.Find(file)
 		if err != nil {
-			return err
+			return len(tmplBytes), err
 		}
 	}
 
@@ -176,12 +193,12 @@ func (c *Cachy) cache(path, file string, box *packr.Box) (err error) {
 
 	tmpl, err = template.New(file).Funcs(c.funcs).Parse(c.stringTemplates[clearPath])
 	if err != nil {
-		return err
+		return len(tmplBytes), err
 	}
 
 	c.templates[clearPath] = tmpl
 
-	return
+	return len(tmplBytes), err
 }
 
 func walkDir(root string) ([]string, error) {
@@ -196,4 +213,18 @@ func walkDir(root string) ([]string, error) {
 	})
 
 	return files, err
+}
+
+func (c *Cachy) HotReload(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	<-c.wsChan
+	err = conn.Close()
+	if err != nil {
+		log.Printf("Cachy WS: %v", err)
+	}
 }

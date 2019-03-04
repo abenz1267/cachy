@@ -1,6 +1,7 @@
 package cachy
 
 import (
+	"html/template"
 	"log"
 	"path/filepath"
 	"strings"
@@ -8,7 +9,19 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-func (c *Cachy) Watch() {
+func (c *Cachy) Watch(wsURL string) {
+	if wsURL != "" {
+		c.funcs["ws"] = func() template.HTML {
+			src := `<script>
+		var ws = new WebSocket('` + wsURL + `');
+		ws.onclose = () => {
+		  location.reload(true);
+		};
+	  </script>`
+			return template.HTML(src)
+		}
+	}
+
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -62,7 +75,8 @@ func (c *Cachy) Watch() {
 
 func (c *Cachy) updateTmpl(path string) (err error) {
 	pathParts := strings.Split(path, "/")
-	if err = c.cache(filepath.Join(pathParts[:len(pathParts)-1]...), pathParts[len(pathParts)-1]+c.ext, nil); err != nil {
+	length, err := c.cache(filepath.Join(pathParts[:len(pathParts)-1]...), pathParts[len(pathParts)-1]+c.ext, nil)
+	if err != nil {
 		return
 	}
 
@@ -76,6 +90,9 @@ func (c *Cachy) updateTmpl(path string) (err error) {
 		}
 	}
 
+	if length > 0 {
+		c.wsChan <- true
+	}
 	return
 }
 
