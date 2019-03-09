@@ -29,6 +29,7 @@ type Cachy struct {
 	folders         []string
 	ext             string
 	wsChan          chan bool
+	wsActive        bool
 }
 
 // New processes all templates and returns a populated Cachy struct.
@@ -126,7 +127,7 @@ func (c *Cachy) parseMultiple(files []string) (tmpl *template.Template, err erro
 		if val, exists := c.stringTemplates[v]; exists {
 			_, err = tmpl.Parse(val)
 		} else {
-			return nil, errors.New(fmt.Sprintf("Cachy: there is no template '%s'", v))
+			return nil, fmt.Errorf("Cachy: there is no template '%s'", v)
 		}
 	}
 

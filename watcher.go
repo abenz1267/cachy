@@ -20,6 +20,10 @@ func (c *Cachy) Watch(wsURL string) {
 	  </script>`
 			return template.HTML(src)
 		}
+
+		log.Println("Cachy: Cachy will block without a websocket connection... ")
+
+		c.wsActive = true
 	}
 
 	watcher, err := fsnotify.NewWatcher()
@@ -90,7 +94,7 @@ func (c *Cachy) updateTmpl(path string) (err error) {
 		}
 	}
 
-	if length > 0 {
+	if length > 0 && c.wsActive {
 		c.wsChan <- true
 	}
 	return
