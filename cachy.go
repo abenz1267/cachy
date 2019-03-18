@@ -6,19 +6,13 @@ import (
 	"html/template"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/gobuffalo/packr/v2"
-	"github.com/gorilla/websocket"
 )
-
-var upgrader = websocket.Upgrader{}
-
-var wDir string
 
 // Cachy represents the template cache
 type Cachy struct {
@@ -28,8 +22,10 @@ type Cachy struct {
 	stringTemplates map[string]string
 	folders         []string
 	ext             string
-	wsChan          chan bool
-	wsActive        bool
+	reloadChan      chan bool
+	reload          bool
+	debug           bool
+	wDir            string
 }
 
 // New processes all templates and returns a populated Cachy struct.
@@ -40,21 +36,21 @@ func New(tmplExt string, funcs template.FuncMap, boxes map[string]*packr.Box, fo
 	c.multiTmpls = make(map[string]*template.Template)
 	c.stringTemplates = make(map[string]string)
 	c.ext = tmplExt
-	c.wsChan = make(chan bool)
+	c.reloadChan = make(chan bool)
 	c.funcs = template.FuncMap{}
-	c.funcs["ws"] = func() string {
-		return "no websocket URL defined..."
+	c.funcs["reloadURL"] = func() string {
+		return "no hot-reloading URL defined"
 	}
 
 	for k, v := range funcs {
 		if _, exists := c.funcs[k]; exists {
-			log.Fatalf("Cachy: function '%s' already exists!", k)
+			return nil, fmt.Errorf("Cachy: function '%s' already exists!", k)
 		} else {
 			c.funcs[k] = v
 		}
 	}
 
-	wDir, err = os.Getwd()
+	c.wDir, err = os.Getwd()
 	if err != nil {
 		return
 	}
@@ -62,7 +58,7 @@ func New(tmplExt string, funcs template.FuncMap, boxes map[string]*packr.Box, fo
 	// set folders
 	switch {
 	case len(folders) == 0 && boxes == nil:
-		folders, err = walkDir(wDir)
+		folders, err = walkDir(c.wDir)
 		if err != nil {
 			return
 		}
@@ -101,6 +97,7 @@ func (c *Cachy) Execute(w io.Writer, data interface{}, files ...string) (err err
 	return
 }
 
+// GetString returns the string representation of the given template.
 func (c *Cachy) GetString(file string) string {
 	return c.stringTemplates[file]
 }
@@ -137,7 +134,7 @@ func (c *Cachy) parseMultiple(files []string) (tmpl *template.Template, err erro
 func (c *Cachy) load() (err error) {
 	dirs := make(map[string][]os.FileInfo)
 	for _, v := range c.folders {
-		files, err := ioutil.ReadDir(filepath.Join(wDir, v))
+		files, err := ioutil.ReadDir(filepath.Join(c.wDir, v))
 		if err != nil {
 			return err
 		}
@@ -178,7 +175,7 @@ func (c *Cachy) cache(path, file string, box *packr.Box) (length int, err error)
 
 	if box == nil {
 		clearPath = filepath.Join(strings.TrimPrefix(path, "/"), strings.TrimSuffix(file, c.ext))
-		tmplBytes, err = ioutil.ReadFile(filepath.Join(wDir, path, file))
+		tmplBytes, err = ioutil.ReadFile(filepath.Join(c.wDir, path, file))
 		if err != nil {
 			return len(tmplBytes), err
 		}
@@ -217,15 +214,6 @@ func walkDir(root string) ([]string, error) {
 }
 
 func (c *Cachy) HotReload(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	<-c.wsChan
-	err = conn.Close()
-	if err != nil {
-		log.Printf("Cachy WS: %v", err)
-	}
+	<-c.reloadChan
+	w.WriteHeader(http.StatusOK)
 }
