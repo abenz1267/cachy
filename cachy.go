@@ -10,8 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/gobuffalo/packr/v2"
 )
 
 // Cachy represents the template cache
@@ -30,7 +28,7 @@ type Cachy struct {
 
 // New processes all templates and returns a populated Cachy struct.
 // You can provide template folders, otherwise it will scan the whole working dir for templates.
-func New(tmplExt string, funcs template.FuncMap, boxes map[string]*packr.Box, folders ...string) (c *Cachy, err error) {
+func New(tmplExt string, funcs template.FuncMap, folders ...string) (c *Cachy, err error) {
 	c = &Cachy{}
 	c.templates = make(map[string]*template.Template)
 	c.multiTmpls = make(map[string]*template.Template)
@@ -55,28 +53,16 @@ func New(tmplExt string, funcs template.FuncMap, boxes map[string]*packr.Box, fo
 		return
 	}
 
-	// set folders
-	switch {
-	case len(folders) == 0 && boxes == nil:
+	if len(folders) == 0 {
 		folders, err = walkDir(c.wDir)
 		if err != nil {
 			return
-		}
-	case boxes != nil:
-		for k := range boxes {
-			folders = append(folders, k)
 		}
 	}
 
 	c.folders = folders
 
-	// cache templates
-	switch boxes {
-	case nil:
-		return c, c.load()
-	default:
-		return c, c.loadBoxes(boxes)
-	}
+	return c, c.load()
 }
 
 // Execute executes the given template(s).
@@ -145,7 +131,7 @@ func (c *Cachy) load() (err error) {
 	for k, v := range dirs {
 		for _, file := range v {
 			if !file.IsDir() && strings.HasSuffix(file.Name(), c.ext) {
-				if _, err := c.cache(k, file.Name(), nil); err != nil {
+				if _, err := c.cache(k, file.Name()); err != nil {
 					return err
 				}
 			}
@@ -155,36 +141,15 @@ func (c *Cachy) load() (err error) {
 	return
 }
 
-func (c *Cachy) loadBoxes(boxes map[string]*packr.Box) (err error) {
-	for _, v := range boxes {
-		for _, f := range v.List() {
-			_, err = c.cache("", f, v)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return
-}
-
-func (c *Cachy) cache(path, file string, box *packr.Box) (length int, err error) {
+func (c *Cachy) cache(path, file string) (length int, err error) {
 	var tmpl *template.Template
 	var clearPath string
 	var tmplBytes []byte
 
-	if box == nil {
-		clearPath = filepath.Join(strings.TrimPrefix(path, "/"), strings.TrimSuffix(file, c.ext))
-		tmplBytes, err = ioutil.ReadFile(filepath.Join(c.wDir, path, file))
-		if err != nil {
-			return len(tmplBytes), err
-		}
-	} else {
-		clearPath = filepath.Join(box.Name, strings.TrimSuffix(file, c.ext))
-		tmplBytes, err = box.Find(file)
-		if err != nil {
-			return len(tmplBytes), err
-		}
+	clearPath = filepath.Join(strings.TrimPrefix(path, "/"), strings.TrimSuffix(file, c.ext))
+	tmplBytes, err = ioutil.ReadFile(filepath.Join(c.wDir, path, file))
+	if err != nil {
+		return len(tmplBytes), err
 	}
 
 	c.stringTemplates[clearPath] = string(tmplBytes)

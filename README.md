@@ -7,7 +7,6 @@ Cachy is a simple caching library for templates using Go's html/template package
 - execute single templates
 - execute multiple templates (as with ParseFiles("file1", "file2"...))
 - filewatcher that updates the cache on template changes
-- support for [Packr (v2)](https://github.com/gobuffalo/packr/tree/master/v2) (for embedding templates)
 - reloading browser on template change via websockets
 
 ## Usage

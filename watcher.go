@@ -89,7 +89,7 @@ func (c *Cachy) log(msg string) {
 
 func (c *Cachy) updateTmpl(path string) (err error) {
 	pathParts := strings.Split(path, "/")
-	length, err := c.cache(filepath.Join(pathParts[:len(pathParts)-1]...), pathParts[len(pathParts)-1]+c.ext, nil)
+	length, err := c.cache(filepath.Join(pathParts[:len(pathParts)-1]...), pathParts[len(pathParts)-1]+c.ext)
 	if err != nil {
 		return
 	}
