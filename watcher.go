@@ -2,7 +2,6 @@ package cachy
 
 import (
 	"fmt"
-	"html/template"
 	"log"
 	"path/filepath"
 	"strings"
@@ -11,24 +10,9 @@ import (
 )
 
 // Watch is used to monitor file changes and update the template cache.
-// Providing a reloadURL enables hot-reloading via JavaScript.
 // You can set debug = true if you want Cachy to ouput log entries on an event.
-func (c *Cachy) Watch(reloadURL string, debug bool) error {
-	if reloadURL != "" {
-		c.funcs["reloadURL"] = func() template.HTML {
-			src := `<script>
-		var ws = new WebSocket('` + reloadURL + `');
-		ws.onclose = () => {
-		  location.reload(true);
-		};
-	  </script>`
-			return template.HTML(src)
-		}
-
-		c.log("Cachy: Cachy will get blocked without a reload connection...")
-		c.debug = debug
-		c.reload = true
-	}
+func (c *Cachy) Watch(debug bool) error {
+	c.debug = debug
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -72,10 +56,10 @@ func (c *Cachy) Watch(reloadURL string, debug bool) error {
 	}
 
 	if counter == len(c.folders) {
-		c.log("Cachy: nothing to watch, closing watcher")
+		c.log("nothing to watch, closing watcher")
 		done <- true
 	}
-	c.log("Cachy: Watching templates for changes...")
+	c.log("watching templates for changes...")
 
 	<-done
 	return nil
@@ -104,7 +88,7 @@ func (c *Cachy) updateTmpl(path string) (err error) {
 		}
 	}
 
-	if length > 0 && c.reload {
+	if length > 0 && c.reloadChan != nil {
 		c.reloadChan <- true
 	}
 	return
@@ -112,7 +96,7 @@ func (c *Cachy) updateTmpl(path string) (err error) {
 
 func deleteTmpl(clearPath string, c *Cachy) {
 	if _, exists := c.stringTemplates[clearPath]; exists {
-		c.log(fmt.Sprintf("Cachy: deleting template from cache: %s\n", clearPath))
+		c.log(fmt.Sprintf("deleting template from cache: %s\n", clearPath))
 		delete(c.stringTemplates, clearPath)
 		delete(c.templates, clearPath)
 	}

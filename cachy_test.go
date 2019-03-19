@@ -12,14 +12,14 @@ func TestNew(t *testing.T) {
 		return msg
 	}
 
-	_, err := New(".html", funcs)
+	_, err := New("", ".html", funcs, "test_templates")
 	if err != nil {
 		t.Error(err)
 	}
 }
 
 func TestExecute(t *testing.T) {
-	c, err := New(".html", nil)
+	c, err := New("", ".html", nil, "test_templates")
 	if err != nil {
 		t.Error(err)
 	}
@@ -30,7 +30,7 @@ func TestExecute(t *testing.T) {
 	}
 }
 func TestExecuteMultiple(t *testing.T) {
-	c, err := New(".html", nil)
+	c, err := New("", ".html", nil, "test_templates")
 	if err != nil {
 		t.Error(err)
 	}

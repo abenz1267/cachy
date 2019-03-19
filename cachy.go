@@ -21,23 +21,34 @@ type Cachy struct {
 	folders         []string
 	ext             string
 	reloadChan      chan bool
-	reload          bool
 	debug           bool
 	wDir            string
+	reloadURL       string
 }
 
 // New processes all templates and returns a populated Cachy struct.
 // You can provide template folders, otherwise it will scan the whole working dir for templates.
-func New(tmplExt string, funcs template.FuncMap, folders ...string) (c *Cachy, err error) {
+func New(reloadURL string, tmplExt string, funcs template.FuncMap, folders ...string) (c *Cachy, err error) {
 	c = &Cachy{}
 	c.templates = make(map[string]*template.Template)
 	c.multiTmpls = make(map[string]*template.Template)
 	c.stringTemplates = make(map[string]string)
 	c.ext = tmplExt
-	c.reloadChan = make(chan bool)
+	c.reloadURL = reloadURL
 	c.funcs = template.FuncMap{}
-	c.funcs["reloadURL"] = func() string {
-		return "no hot-reloading URL defined"
+
+	if reloadURL != "" {
+		c.reloadChan = make(chan bool)
+
+		c.funcs["reloadScript"] = func() template.HTML {
+			src := `<script>
+		fetch('` + reloadURL + `')
+		  .then(function() {
+			location.reload();
+		  })
+		</script>`
+			return template.HTML(src)
+		}
 	}
 
 	for k, v := range funcs {
