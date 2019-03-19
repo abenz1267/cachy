@@ -1,7 +1,7 @@
 package cachy
 
 import (
-	"html/template"
+	"fmt"
 	"log"
 	"path/filepath"
 	"strings"
@@ -9,26 +9,14 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-func (c *Cachy) Watch(wsURL string) {
-	if wsURL != "" {
-		c.funcs["ws"] = func() template.HTML {
-			src := `<script>
-		var ws = new WebSocket('` + wsURL + `');
-		ws.onclose = () => {
-		  location.reload(true);
-		};
-	  </script>`
-			return template.HTML(src)
-		}
-
-		log.Println("Cachy: Cachy will block without a websocket connection... ")
-
-		c.wsActive = true
-	}
+// Watch is used to monitor file changes and update the template cache.
+// You can set debug = true if you want Cachy to ouput log entries on an event.
+func (c *Cachy) Watch(debug bool) error {
+	c.debug = debug
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer watcher.Close()
 
@@ -39,13 +27,13 @@ func (c *Cachy) Watch(wsURL string) {
 			select {
 			case event := <-watcher.Events:
 				if strings.Contains(event.Name, c.ext) {
-					clearPath := strings.TrimPrefix(strings.TrimSuffix(event.Name, c.ext), wDir+"/")
+					clearPath := strings.TrimPrefix(strings.TrimSuffix(event.Name, c.ext), c.wDir+"/")
 
 					if event.Op == fsnotify.Write || event.Op == fsnotify.Create {
-						if err := c.updateTmpl(clearPath); err != nil {
-							log.Printf("Cachy: couldn't cache template: %s", err)
-						} else {
-							log.Printf("Cachy: updated template file: %s\n", clearPath)
+						if err := c.updateTmpl(clearPath); err != nil && debug {
+							c.log(fmt.Sprintf("couldn't cache template %s", err))
+						} else if debug {
+							c.log(fmt.Sprintf("update template %s", clearPath))
 						}
 					} else if event.Op == fsnotify.Remove || event.Op == fsnotify.Rename {
 						deleteTmpl(clearPath, c)
@@ -53,33 +41,39 @@ func (c *Cachy) Watch(wsURL string) {
 				}
 
 			case err := <-watcher.Errors:
-				log.Println(err)
+				c.log(err.Error())
 			}
 		}
 	}()
 
 	counter := 0
 	for _, v := range c.folders {
-		v = filepath.Join(wDir, v)
+		v = filepath.Join(c.wDir, v)
 		if err := watcher.Add(v); err != nil {
-			log.Printf("Cachy: %s:%s", err, v)
+			c.log(fmt.Sprintf("Cachy: %s:%s", err, v))
 			counter++
 		}
 	}
 
 	if counter == len(c.folders) {
-		log.Println("Cachy: nothing to watch, closing watcher")
+		c.log("nothing to watch, closing watcher")
 		done <- true
 	}
-
-	log.Println("Cachy: Watching templates for changes...")
+	c.log("watching templates for changes...")
 
 	<-done
+	return nil
+}
+
+func (c *Cachy) log(msg string) {
+	if c.debug {
+		log.Printf("Cachy: %s", msg)
+	}
 }
 
 func (c *Cachy) updateTmpl(path string) (err error) {
 	pathParts := strings.Split(path, "/")
-	length, err := c.cache(filepath.Join(pathParts[:len(pathParts)-1]...), pathParts[len(pathParts)-1]+c.ext, nil)
+	length, err := c.cache(filepath.Join(pathParts[:len(pathParts)-1]...), pathParts[len(pathParts)-1]+c.ext)
 	if err != nil {
 		return
 	}
@@ -94,15 +88,15 @@ func (c *Cachy) updateTmpl(path string) (err error) {
 		}
 	}
 
-	if length > 0 && c.wsActive {
-		c.wsChan <- true
+	if length > 0 && c.reloadChan != nil {
+		c.reloadChan <- true
 	}
 	return
 }
 
 func deleteTmpl(clearPath string, c *Cachy) {
 	if _, exists := c.stringTemplates[clearPath]; exists {
-		log.Printf("Cachy: deleting template from cache: %s\n", clearPath)
+		c.log(fmt.Sprintf("deleting template from cache: %s\n", clearPath))
 		delete(c.stringTemplates, clearPath)
 		delete(c.templates, clearPath)
 	}

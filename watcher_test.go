@@ -3,13 +3,14 @@ package cachy
 import (
 	"bytes"
 	"io/ioutil"
+	"log"
 	"os"
 	"testing"
 	"time"
 )
 
 func TestUpdateTmpl(t *testing.T) {
-	c, err := New(".html", nil, nil, "test_templates")
+	c, err := New("", ".html", nil, "test_templates")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,7 +22,7 @@ func TestUpdateTmpl(t *testing.T) {
 	}
 
 	go func() {
-		<-c.wsChan
+		<-c.reloadChan
 	}()
 
 	err = c.updateTmpl("test_templates/index")
@@ -33,12 +34,14 @@ func TestUpdateTmpl(t *testing.T) {
 }
 
 func TestWatch(t *testing.T) {
-	c, err := New(".html", nil, nil)
+	c, err := New("", ".html", nil, "test_templates")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	go c.Watch("ws://someurl/ws")
+	go func() {
+		log.Fatal(c.Watch(true))
+	}()
 
 	data := []byte("new template")
 

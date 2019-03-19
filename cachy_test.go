@@ -4,88 +4,39 @@ import (
 	"bytes"
 	"html/template"
 	"testing"
-
-	"github.com/gobuffalo/packr/v2"
 )
 
-func TestLoad(t *testing.T) {
+func TestNew(t *testing.T) {
 	funcs := template.FuncMap{}
-	funcs["test"] = func() string {
-		return "test"
+	funcs["test"] = func(msg string) string {
+		return msg
 	}
 
-	c, err := New(".html", funcs, nil)
+	_, err := New("", ".html", funcs, "test_templates")
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
+}
 
+func TestExecute(t *testing.T) {
+	c, err := New("", ".html", nil, "test_templates")
+	if err != nil {
+		t.Error(err)
+	}
 	var b bytes.Buffer
-	err = c.Execute(&b, nil, "test_templates/base", "test_templates/index")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	b.Reset()
 	err = c.Execute(&b, nil, "test_templates/base")
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 }
-
-func TestLoadWithPackr(t *testing.T) {
-	boxes := make(map[string]*packr.Box)
-	boxes["test_templates"] = packr.New("test_templates", "./test_templates")
-	c, err := New(".html", nil, boxes)
+func TestExecuteMultiple(t *testing.T) {
+	c, err := New("", ".html", nil, "test_templates")
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
-
 	var b bytes.Buffer
 	err = c.Execute(&b, nil, "test_templates/base", "test_templates/index")
 	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestGetString(t *testing.T) {
-	c, err := New(".html", nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if c.GetString("test_templates/index") == "" {
-		t.Fatal("couldn't get template string")
-	}
-}
-
-func BenchmarkExecuteSingleTemplate(b *testing.B) {
-	c, err := New(".html", nil, nil, "test_templates")
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	var w bytes.Buffer
-	for n := 0; n < b.N; n++ {
-		err := c.Execute(&w, nil, "test_templates/base")
-		if err != nil {
-			b.Error(err)
-		}
-		w.Reset()
-	}
-}
-
-func BenchmarkExecuteDualTemplate(b *testing.B) {
-	c, err := New(".html", nil, nil, "test_templates")
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	var w bytes.Buffer
-	for n := 0; n < b.N; n++ {
-		err := c.Execute(&w, nil, "test_templates/base", "test_templates/index")
-		if err != nil {
-			b.Error(err)
-		}
-		w.Reset()
+		t.Error(err)
 	}
 }

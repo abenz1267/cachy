@@ -3,31 +3,23 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/abenz1267/cachy"
 )
 
 func main() {
-	c, err := cachy.New(".html", nil, nil, "templates")
-	if err != nil {
-		log.Fatal(err)
-	}
+	c, _ := cachy.New("/reload", ".html", nil)
+	go c.Watch(true)
 
-	go c.Watch("wss://localhost:3000/ws")
+	http.Handle("/", Index(c))
+	http.Handle("/reload", http.HandlerFunc(c.HotReload))
 
-	http.Handle("/", index(c))
-	http.HandleFunc("/ws", c.HotReload)
-
-	log.Println("Running server on https://localhost:3000 ...")
-	log.Fatal(http.ListenAndServeTLS(":3000", os.Getenv("CERT"), os.Getenv("KEY"), nil))
+	log.Println("Server running on http://localhost:3000/")
+	log.Fatal(http.ListenAndServe(":3000", nil))
 }
 
-func index(c *cachy.Cachy) http.Handler {
+func Index(c *cachy.Cachy) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		err := c.Execute(w, nil, "templates/base", "templates/index")
-		if err != nil {
-			log.Println(err)
-		}
+		c.Execute(w, nil, "index")
 	})
 }
