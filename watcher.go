@@ -26,7 +26,7 @@ func (c *Cachy) Watch(debug bool) error {
 		for {
 			select {
 			case event := <-watcher.Events:
-				if strings.Contains(event.Name, c.ext) && !strings.HasSuffix(event.Name, "~") {
+				if strings.HasSuffix(event.Name, c.ext) {
 					clearPath := strings.TrimPrefix(strings.TrimSuffix(event.Name, c.ext), c.wDir+"/")
 
 					if event.Op == fsnotify.Write || event.Op == fsnotify.Create {
