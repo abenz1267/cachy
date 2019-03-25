@@ -26,7 +26,7 @@ func (c *Cachy) Watch(debug bool) error {
 		for {
 			select {
 			case event := <-watcher.Events:
-				if strings.Contains(event.Name, c.ext) {
+				if strings.Contains(event.Name, c.ext) && !strings.Contains(event.Name, "~.html") {
 					clearPath := strings.TrimPrefix(strings.TrimSuffix(event.Name, c.ext), c.wDir+"/")
 
 					if event.Op == fsnotify.Write || event.Op == fsnotify.Create {
