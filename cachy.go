@@ -22,13 +22,15 @@ type Cachy struct {
 	ext             string
 	reloadChan      chan bool
 	debug           bool
+	allowDuplicates bool
+	recursive       bool
 	wDir            string
 	reloadURL       string
 }
 
 // New processes all templates and returns a populated Cachy struct.
 // You can provide template folders, otherwise it will scan the whole working dir for templates.
-func New(reloadURL string, tmplExt string, funcs template.FuncMap, folders ...string) (c *Cachy, err error) {
+func New(reloadURL string, tmplExt string, allowDuplicates bool, recursive bool, funcs template.FuncMap, folders ...string) (c *Cachy, err error) {
 	c = &Cachy{}
 	c.templates = make(map[string]*template.Template)
 	c.multiTmpls = make(map[string]*template.Template)
@@ -36,6 +38,8 @@ func New(reloadURL string, tmplExt string, funcs template.FuncMap, folders ...st
 	c.ext = "." + tmplExt
 	c.reloadURL = reloadURL
 	c.funcs = template.FuncMap{}
+	c.allowDuplicates = allowDuplicates
+	c.recursive = recursive
 
 	if reloadURL != "" {
 		c.reloadChan = make(chan bool)
@@ -70,7 +74,27 @@ func New(reloadURL string, tmplExt string, funcs template.FuncMap, folders ...st
 		}
 	}
 
-	c.folders = folders
+	if c.recursive {
+		var toAdd []string
+		for _, v := range folders {
+			toAdd, err = walkDir(v)
+			if err != nil {
+				return
+			}
+
+			for k, s := range toAdd {
+				toAdd[k] = filepath.Join(v, s)
+			}
+
+			c.folders = append(c.folders, toAdd...)
+		}
+
+		c.folders = uniquePaths(c.folders)
+	} else {
+		c.folders = folders
+	}
+
+	fmt.Println(c.folders)
 
 	return c, c.load()
 }
@@ -78,7 +102,7 @@ func New(reloadURL string, tmplExt string, funcs template.FuncMap, folders ...st
 // Execute executes the given template(s).
 func (c *Cachy) Execute(w io.Writer, data interface{}, files ...string) (err error) {
 	if v, ok := w.(http.ResponseWriter); ok {
-		v.Header().Set("Content-Type", "text/html")
+		v.Header().Set("Content-Type", "text/html; charset=utf-8")
 	}
 
 	switch len := len(files); {
@@ -141,7 +165,7 @@ func (c *Cachy) load() (err error) {
 	for k, v := range dirs {
 		for _, file := range v {
 			if !file.IsDir() && strings.HasSuffix(file.Name(), c.ext) {
-				if _, err := c.cache(k, file.Name()); err != nil {
+				if _, err := c.cache(k, file.Name(), false); err != nil {
 					return err
 				}
 			}
@@ -151,12 +175,17 @@ func (c *Cachy) load() (err error) {
 	return
 }
 
-func (c *Cachy) cache(path, file string) (length int, err error) {
+func (c *Cachy) cache(path, file string, update bool) (length int, err error) {
 	var tmpl *template.Template
 	var clearPath string
 	var tmplBytes []byte
 
-	clearPath = filepath.Join(strings.TrimPrefix(path, "/"), strings.TrimSuffix(file, c.ext))
+	if c.allowDuplicates {
+		clearPath = filepath.Join(strings.TrimPrefix(path, "/"), strings.TrimSuffix(file, c.ext))
+	} else {
+		clearPath = strings.TrimSuffix(file, c.ext)
+	}
+
 	tmplBytes, err = ioutil.ReadFile(filepath.Join(c.wDir, path, file))
 	if err != nil {
 		return len(tmplBytes), err
@@ -167,6 +196,12 @@ func (c *Cachy) cache(path, file string) (length int, err error) {
 	tmpl, err = template.New(file).Funcs(c.funcs).Parse(c.stringTemplates[clearPath])
 	if err != nil {
 		return len(tmplBytes), err
+	}
+
+	if !update {
+		if _, exists := c.templates[clearPath]; exists {
+			return len(tmplBytes), fmt.Errorf("Template '%s' already exists", clearPath)
+		}
 	}
 
 	c.templates[clearPath] = tmpl
@@ -192,4 +227,18 @@ func walkDir(root string) ([]string, error) {
 func (c *Cachy) HotReload(w http.ResponseWriter, r *http.Request) {
 	<-c.reloadChan
 	w.WriteHeader(http.StatusOK)
+}
+
+func uniquePaths(s []string) []string {
+	seen := make(map[string]struct{}, len(s))
+	j := 0
+	for _, v := range s {
+		if _, ok := seen[v]; ok {
+			continue
+		}
+		seen[v] = struct{}{}
+		s[j] = v
+		j++
+	}
+	return s[:j]
 }

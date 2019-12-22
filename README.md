@@ -10,16 +10,22 @@ Cachy is a simple caching library for templates using Go's html/template package
 - execute multiple templates (as with ParseFiles("file1", "file2"...))
 - filewatcher that updates the cache on template changes
 - reloading browser on template change via JavaScript fetch
+- allow duplicate template files
+- add folders recursively
 
 ## Usage
+
+If you explicitly set folders, you can tell Cachy to search for nested folders via the "recursive" argument. If no folder is given, Cachy will look for template files in the current folder recursively.
+
+The "allowDuplicates" parameter checks, if templates with the same filename can co-exist or not. If duplications are disallowed, executing templates is easily done by just providing the filename minus the extension. If duplicates are allowed, you have to include the whole path.
 
 ### Simple Example:
 
 ```go
-c, _ := cachy.New("", ".html", nil) // this will process all *.html files, no FuncMap.
+c, _ := cachy.New("", "html", false, false, nil) // this will process all *.html files, no FuncMap, no duplicates.
 go c.Watch(true) // starts the filewatcher, logging enabled
 
-_ := c.Execute(w, nil, "folder/template", "folder/template2") // io.Writer, data, templates...
+_ := c.Execute(w, nil, "template", "template2") // io.Writer, data, templates...
 ```
 
 ### Hot-Reloading browser via JavaScript
@@ -27,7 +33,7 @@ _ := c.Execute(w, nil, "folder/template", "folder/template2") // io.Writer, data
 ```go
 ...
 
-c, _ := cachy.New("/reload", ".html", nil)
+c, _ := cachy.New("/reload", "html", false, false, nil)
 go c.Watch(false)
 
 http.Handle("/reload", http.HandlerFunc(c.HotReload))

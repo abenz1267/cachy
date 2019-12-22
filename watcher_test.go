@@ -9,14 +9,14 @@ import (
 	"time"
 )
 
-func TestUpdateTmpl(t *testing.T) {
-	c, err := New("", ".html", nil, "test_templates")
+func TestUpdateTmplNoDuplicates(t *testing.T) {
+	c, err := New("", "html", false, false, nil, "test_templates")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	var b bytes.Buffer
-	err = c.Execute(&b, nil, "test_templates/base", "test_templates/index")
+	err = c.Execute(&b, nil, "base", "index")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,16 +25,16 @@ func TestUpdateTmpl(t *testing.T) {
 		<-c.reloadChan
 	}()
 
-	err = c.updateTmpl("test_templates/index")
+	err = c.updateTmpl("index")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	deleteTmpl("test_templates/index", c)
+	deleteTmpl("index", c)
 }
 
 func TestWatch(t *testing.T) {
-	c, err := New("", ".html", nil, "test_templates")
+	c, err := New("", "html", false, false, nil, "test_templates")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	c, _ := cachy.New("/reload", ".html", nil)
+	c, _ := cachy.New("/reload", "html", false, nil)
 	go c.Watch(true)
 
 	http.Handle("/", Index(c))
