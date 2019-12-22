@@ -184,6 +184,12 @@ func (c *Cachy) cache(path, file string, update bool) (length int, err error) {
 		clearPath = strings.TrimSuffix(file, c.ext)
 	}
 
+	if !update {
+		if _, exists := c.templates[clearPath]; exists {
+			return len(tmplBytes), fmt.Errorf("Template '%s' already exists", clearPath)
+		}
+	}
+
 	tmplBytes, err = ioutil.ReadFile(filepath.Join(c.wDir, path, file))
 	if err != nil {
 		return len(tmplBytes), err
@@ -196,13 +202,17 @@ func (c *Cachy) cache(path, file string, update bool) (length int, err error) {
 		return len(tmplBytes), err
 	}
 
-	if !update {
-		if _, exists := c.templates[clearPath]; exists {
-			return len(tmplBytes), fmt.Errorf("Template '%s' already exists", clearPath)
+	c.templates[clearPath] = tmpl
+
+	for k, _ := range c.multiTmpls {
+		templates := strings.Split(k, ",")
+
+		for _, v := range templates {
+			if v == clearPath {
+				delete(c.multiTmpls, k)
+			}
 		}
 	}
-
-	c.templates[clearPath] = tmpl
 
 	return len(tmplBytes), err
 }
