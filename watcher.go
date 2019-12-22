@@ -74,15 +74,16 @@ func (c *Cachy) log(msg string) {
 
 func (c *Cachy) updateTmpl(path string) (err error) {
 	pathParts := strings.Split(path, "/")
+	file := pathParts[len(pathParts)-1] + c.ext
 
 	var templatepath string
 	if c.allowDuplicates {
 		templatepath = filepath.Join(pathParts[:len(pathParts)-1]...)
 	} else {
-		templatepath = findFile(c, path)
+		templatepath = findFile(c, file)
 	}
 
-	length, err := c.cache(templatepath, pathParts[len(pathParts)-1]+c.ext, true)
+	length, err := c.cache(templatepath, file, true)
 	if err != nil {
 		return err
 	}
@@ -106,8 +107,12 @@ func findFile(c *Cachy, file string) string {
 	var realpath string
 
 	for _, v := range c.folders {
+		if v == "" {
+			return realpath
+		}
+
 		err := filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
-			if !info.IsDir() && info.Name() == file+c.ext {
+			if !info.IsDir() && info.Name() == file {
 				realpath = v
 				return nil
 			}
