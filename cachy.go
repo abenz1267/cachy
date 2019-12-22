@@ -33,7 +33,7 @@ func New(reloadURL string, tmplExt string, funcs template.FuncMap, folders ...st
 	c.templates = make(map[string]*template.Template)
 	c.multiTmpls = make(map[string]*template.Template)
 	c.stringTemplates = make(map[string]string)
-	c.ext = tmplExt
+	c.ext = "." + tmplExt
 	c.reloadURL = reloadURL
 	c.funcs = template.FuncMap{}
 
@@ -53,10 +53,9 @@ func New(reloadURL string, tmplExt string, funcs template.FuncMap, folders ...st
 
 	for k, v := range funcs {
 		if _, exists := c.funcs[k]; exists {
-			return nil, fmt.Errorf("Cachy: function '%s' already exists!", k)
-		} else {
-			c.funcs[k] = v
+			return nil, fmt.Errorf("cachy: function '%s' already exists", k)
 		}
+		c.funcs[k] = v
 	}
 
 	c.wDir, err = os.Getwd()
@@ -189,6 +188,7 @@ func walkDir(root string) ([]string, error) {
 	return files, err
 }
 
+// HotReload is the endpoint that gets called in order to reload on template changes
 func (c *Cachy) HotReload(w http.ResponseWriter, r *http.Request) {
 	<-c.reloadChan
 	w.WriteHeader(http.StatusOK)
