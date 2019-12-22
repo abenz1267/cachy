@@ -94,8 +94,6 @@ func New(reloadURL string, tmplExt string, allowDuplicates bool, recursive bool,
 		c.folders = folders
 	}
 
-	fmt.Println(c.folders)
-
 	return c, c.load()
 }
 
