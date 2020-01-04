@@ -112,8 +112,9 @@ func findFile(c *Cachy, file string) string {
 		}
 
 		err := filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
-			if !info.IsDir() && info.Name() == file {
+			if info != nil && !info.IsDir() && info.Name() == file {
 				realpath = v
+
 				return nil
 			}
 			return nil
