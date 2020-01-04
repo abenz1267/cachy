@@ -20,6 +20,6 @@ func main() {
 
 func Index(c *cachy.Cachy) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c.Execute(w, nil, "index")
+		c.Execute(w, nil, "index", "child")
 	})
 }
