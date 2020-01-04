@@ -32,7 +32,9 @@ func (c *Cachy) Watch(debug bool) error {
 
 					if event.Op == fsnotify.Write || event.Op == fsnotify.Create {
 						if err := c.updateTmpl(clearPath); err != nil && debug {
-							c.log(fmt.Sprintf("couldn't cache template %s", err))
+							if err.Error() != ERROR_UPDATED_ALREADY {
+								c.log(fmt.Sprintf("couldn't cache template %s. %s", clearPath, err))
+							}
 						} else if debug {
 							c.log(fmt.Sprintf("update template %s", clearPath))
 						}

@@ -1,6 +1,8 @@
 package cachy
 
 import (
+	"bytes"
+	"crypto/md5"
 	"errors"
 	"fmt"
 	"html/template"
@@ -18,6 +20,7 @@ type Cachy struct {
 	templates       map[string]*template.Template
 	multiTmpls      map[string]*template.Template
 	stringTemplates map[string]string
+	checksums       map[string][]byte
 	folders         []string
 	ext             string
 	reloadChan      chan bool
@@ -28,6 +31,8 @@ type Cachy struct {
 	reloadURL       string
 }
 
+const ERROR_UPDATED_ALREADY = "already updated"
+
 // New processes all templates and returns a populated Cachy struct.
 // You can provide template folders, otherwise it will scan the whole working dir for templates.
 func New(reloadURL string, tmplExt string, allowDuplicates bool, recursive bool, funcs template.FuncMap, folders ...string) (c *Cachy, err error) {
@@ -35,6 +40,7 @@ func New(reloadURL string, tmplExt string, allowDuplicates bool, recursive bool,
 	c.templates = make(map[string]*template.Template)
 	c.multiTmpls = make(map[string]*template.Template)
 	c.stringTemplates = make(map[string]string)
+	c.checksums = make(map[string][]byte)
 	c.ext = "." + tmplExt
 	c.reloadURL = reloadURL
 	c.funcs = template.FuncMap{}
@@ -178,6 +184,8 @@ func (c *Cachy) cache(path, file string, update bool) (length int, err error) {
 	var clearPath string
 	var tmplBytes []byte
 
+	h := md5.New()
+
 	if c.allowDuplicates {
 		clearPath = filepath.Join(strings.TrimPrefix(path, "/"), strings.TrimSuffix(file, c.ext))
 	} else {
@@ -194,6 +202,13 @@ func (c *Cachy) cache(path, file string, update bool) (length int, err error) {
 	if err != nil {
 		return len(tmplBytes), err
 	}
+
+	checksum := h.Sum(tmplBytes)
+	if bytes.Equal(c.checksums[clearPath], checksum) {
+		return 0, errors.New(ERROR_UPDATED_ALREADY)
+	}
+
+	c.checksums[clearPath] = checksum
 
 	c.stringTemplates[clearPath] = string(tmplBytes)
 
