@@ -51,8 +51,10 @@ In your template you simply have to execute the "reloadScript" template-function
 ## Benchmarks
 
 ```
-BenchmarkExecuteSingleTemplate-16    5000000	       338 ns/op	      96 B/op	       2 allocs/op
-BenchmarkExecuteDualTemplate-16    	 3000000	       432 ns/op	     144 B/op	       3 allocs/op
+BenchmarkDefaultSingle-16        4395246               468 ns/op             807 B/op          2 allocs/op
+BenchmarkDefaultMultiple-16      4934824               412 ns/op             743 B/op          2 allocs/op
+BenchmarkCachySingle-16          4513342               455 ns/op             789 B/op          2 allocs/op
+BenchmarkCachyMultiple-16        3543176               567 ns/op            1013 B/op          3 allocs/op
 ```
 
 If you have suggestions or feedback, feel free to contact me! PRs or Issues are welcomed!

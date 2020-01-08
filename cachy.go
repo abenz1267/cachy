@@ -109,16 +109,14 @@ func (c *Cachy) Execute(w io.Writer, data interface{}, files ...string) (err err
 		v.Header().Set("Content-Type", "text/html; charset=utf-8")
 	}
 
-	switch len := len(files); {
-	case len == 0:
+	switch l := len(files); {
+	case l == 0:
 		return errors.New("Cachy: there are no templates to execute")
-	case len == 1:
+	case l == 1:
 		return c.templates[files[0]].Execute(w, data)
-	case len > 1:
+	default:
 		return c.executeMultiple(w, data, files)
 	}
-
-	return
 }
 
 // GetString returns the string representation of the given template.

@@ -3,6 +3,7 @@ package cachy
 import (
 	"bytes"
 	"html/template"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -88,21 +89,45 @@ func TestExecuteMultiple(t *testing.T) {
 	}
 }
 
-func BenchmarkSingle(b *testing.B) {
+func BenchmarkDefaultSingle(b *testing.B) {
+	var w bytes.Buffer
+	b.ReportAllocs()
+	t, _ := template.ParseFiles(filepath.Join("test_templates", "base.html"))
+
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		t.Execute(&w, nil)
+	}
+}
+
+func BenchmarkDefaultMultiple(b *testing.B) {
+	var w bytes.Buffer
+	b.ReportAllocs()
+	t, _ := template.ParseFiles(filepath.Join("test_templates", "base.html"), filepath.Join("test_templates", "index.html"))
+
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		t.Execute(&w, nil)
+	}
+}
+
+func BenchmarkCachySingle(b *testing.B) {
+	b.ReportAllocs()
 	var w bytes.Buffer
 	c, _ := New("", "html", false, false, nil, "test_templates")
-	b.ReportAllocs()
 
+	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		c.Execute(&w, nil, "base")
 	}
 }
 
-func BenchmarkMultiple(b *testing.B) {
+func BenchmarkCachyMultiple(b *testing.B) {
+	b.ReportAllocs()
 	var w bytes.Buffer
 	c, _ := New("", "html", false, false, nil, "test_templates")
-	b.ReportAllocs()
 
+	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		c.Execute(&w, nil, "base", "index")
 	}
