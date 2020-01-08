@@ -75,6 +75,7 @@ func TestExecute(t *testing.T) {
 		t.Error(err)
 	}
 }
+
 func TestExecuteMultiple(t *testing.T) {
 	c, err := New("", "html", false, false, nil, "test_templates")
 	if err != nil {
@@ -84,5 +85,25 @@ func TestExecuteMultiple(t *testing.T) {
 	err = c.Execute(&b, nil, "base", "index")
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+func BenchmarkSingle(b *testing.B) {
+	var w bytes.Buffer
+	c, _ := New("", "html", false, false, nil, "test_templates")
+	b.ReportAllocs()
+
+	for n := 0; n < b.N; n++ {
+		c.Execute(&w, nil, "base")
+	}
+}
+
+func BenchmarkMultiple(b *testing.B) {
+	var w bytes.Buffer
+	c, _ := New("", "html", false, false, nil, "test_templates")
+	b.ReportAllocs()
+
+	for n := 0; n < b.N; n++ {
+		c.Execute(&w, nil, "base", "index")
 	}
 }

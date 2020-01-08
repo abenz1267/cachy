@@ -26,7 +26,7 @@ func TestUpdateTmplNoDuplicates(t *testing.T) {
 	}()
 
 	err = c.updateTmpl("index")
-	if err != nil {
+	if err != nil && err.Error() != ERROR_UPDATED_ALREADY {
 		t.Fatal(err)
 	}
 
