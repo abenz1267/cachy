@@ -31,28 +31,46 @@ type Cachy struct {
 	reloadURL       string
 }
 
+type Params struct {
+	URL        string
+	Ext        string
+	Duplicates bool
+	Recursive  bool
+}
+
 const ERROR_UPDATED_ALREADY = "already updated"
 
 // New processes all templates and returns a populated Cachy struct.
 // You can provide template folders, otherwise it will scan the whole working dir for templates.
-func New(reloadURL string, tmplExt string, allowDuplicates bool, recursive bool, funcs template.FuncMap, folders ...string) (c *Cachy, err error) {
+func New(p *Params, funcs template.FuncMap, folders ...string) (c *Cachy, err error) {
 	c = &Cachy{}
+
+	if p != nil {
+		c.allowDuplicates = p.Duplicates
+		c.recursive = p.Recursive
+		c.ext = "." + p.Ext
+		c.reloadURL = p.URL
+
+		if strings.HasPrefix(p.Ext, ".") {
+			return nil, errors.New("Extension can't start with a '.'")
+		}
+	} else {
+		c.ext = ".html"
+		c.reloadURL = "/hotreload"
+	}
+
 	c.templates = make(map[string]*template.Template)
 	c.multiTmpls = make(map[string]*template.Template)
 	c.stringTemplates = make(map[string]string)
 	c.checksums = make(map[string][]byte)
-	c.ext = "." + tmplExt
-	c.reloadURL = reloadURL
 	c.funcs = template.FuncMap{}
-	c.allowDuplicates = allowDuplicates
-	c.recursive = recursive
 
-	if reloadURL != "" {
+	if c.reloadURL != "" {
 		c.reloadChan = make(chan bool)
 
 		c.funcs["reloadScript"] = func() template.HTML {
 			src := `<script>
-		fetch('` + reloadURL + `')
+		fetch('` + c.reloadURL + `')
 		  .then(function() {
 			location.reload();
 		  })
@@ -73,14 +91,17 @@ func New(reloadURL string, tmplExt string, allowDuplicates bool, recursive bool,
 		return
 	}
 
+	var noExplFolders bool
 	if len(folders) == 0 {
 		folders, err = walkDir(c.wDir)
 		if err != nil {
 			return
 		}
+
+		noExplFolders = true
 	}
 
-	if c.recursive {
+	if c.recursive && !noExplFolders {
 		var toAdd []string
 		for _, v := range folders {
 			toAdd, err = walkDir(v)

@@ -8,82 +8,65 @@ import (
 	"testing"
 )
 
-func TestNew(t *testing.T) {
+func TestNewDefault(t *testing.T) {
 	funcs := template.FuncMap{}
 	funcs["test"] = func(msg string) string {
 		return msg
 	}
 
-	_, err := New("", "html", false, false, funcs, "test_templates")
+	c, err := New(nil, funcs)
 	if err != nil {
 		if !strings.Contains(err.Error(), "already exists") {
 			t.Error(err)
 		}
+	}
+
+	var w bytes.Buffer
+	err = c.Execute(&w, nil, "index")
+	if err != nil {
+		t.Error(err)
 	}
 }
 
 func TestNewRecursive(t *testing.T) {
-	_, err := New("", "html", false, true, nil, "test_templates", "test_templates/nested")
+	p := &Params{URL: "", Ext: "html", Duplicates: false, Recursive: true}
+	c, err := New(p, nil, "test_templates")
 	if err != nil {
 		if !strings.Contains(err.Error(), "already exists") {
 			t.Error(err)
 		}
 	}
-}
 
-func TestNewRecursiveAllowDuplicates(t *testing.T) {
-	_, err := New("/reload", "html", false, false, nil)
-	if err != nil {
-		if !strings.Contains(err.Error(), "already exists") {
-			t.Error(err)
-		}
-	}
-}
-
-func TestNoDuplicates(t *testing.T) {
-	c, err := New("", "html", false, false, nil, "test_templates", "test_templates/nested")
-	if err != nil {
-		t.Error(err)
-	}
-
-	var b bytes.Buffer
-	err = c.Execute(&b, nil, "base", "nested")
+	var w bytes.Buffer
+	err = c.Execute(&w, nil, "index")
 	if err != nil {
 		t.Error(err)
 	}
 }
 
-func TestAllowDuplicates(t *testing.T) {
-	c, err := New("", "html", true, false, nil, "test_templates", "test_templates/nested", "test_templates/nested/nested2")
+func TestNewDuplicates(t *testing.T) {
+	p := &Params{URL: "/reload", Ext: "html", Duplicates: true, Recursive: false}
+	c, err := New(p, nil)
 	if err != nil {
 		t.Error(err)
 	}
-	var b bytes.Buffer
-	err = c.Execute(&b, nil, "test_templates/base", "test_templates/nested/nested", "test_templates/nested/nested2/nested")
+
+	var w bytes.Buffer
+	err = c.Execute(&w, nil, "test_templates/index")
 	if err != nil {
 		t.Error(err)
 	}
 }
 
-func TestExecute(t *testing.T) {
-	c, err := New("", "html", false, false, nil, "test_templates")
+func TestNewDuplicatesRecursive(t *testing.T) {
+	p := &Params{URL: "/reload", Ext: "html", Duplicates: true, Recursive: true}
+	c, err := New(p, nil)
 	if err != nil {
 		t.Error(err)
 	}
-	var b bytes.Buffer
-	err = c.Execute(&b, nil, "base")
-	if err != nil {
-		t.Error(err)
-	}
-}
 
-func TestExecuteMultiple(t *testing.T) {
-	c, err := New("", "html", false, false, nil, "test_templates")
-	if err != nil {
-		t.Error(err)
-	}
-	var b bytes.Buffer
-	err = c.Execute(&b, nil, "base", "index")
+	var w bytes.Buffer
+	err = c.Execute(&w, nil, "test_templates/index", "test_templates/base")
 	if err != nil {
 		t.Error(err)
 	}
@@ -114,7 +97,7 @@ func BenchmarkDefaultMultiple(b *testing.B) {
 func BenchmarkCachySingle(b *testing.B) {
 	b.ReportAllocs()
 	var w bytes.Buffer
-	c, _ := New("", "html", false, false, nil, "test_templates")
+	c, _ := New(nil, nil, "test_templates")
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
@@ -125,7 +108,7 @@ func BenchmarkCachySingle(b *testing.B) {
 func BenchmarkCachyMultiple(b *testing.B) {
 	b.ReportAllocs()
 	var w bytes.Buffer
-	c, _ := New("", "html", false, false, nil, "test_templates")
+	c, _ := New(nil, nil, "test_templates")
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {

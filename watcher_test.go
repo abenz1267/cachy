@@ -10,7 +10,7 @@ import (
 )
 
 func TestUpdateTmplNoDuplicates(t *testing.T) {
-	c, err := New("", "html", false, false, nil, "test_templates")
+	c, err := New(nil, nil, "test_templates")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestUpdateTmplNoDuplicates(t *testing.T) {
 }
 
 func TestWatch(t *testing.T) {
-	c, err := New("", "html", false, false, nil, "test_templates")
+	c, err := New(nil, nil, "test_templates")
 	if err != nil {
 		t.Fatal(err)
 	}
