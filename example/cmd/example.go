@@ -8,11 +8,12 @@ import (
 )
 
 func main() {
-	c, _ := cachy.New("/reload", "html", false, true, nil, "../")
+	p := &cachy.Params{URL: "/hotreload", Ext: "html", Duplicates: false, Recursive: true}
+	c, _ := cachy.New(p, nil, "../")
 	go c.Watch(true)
 
 	http.Handle("/", Index(c))
-	http.Handle("/reload", http.HandlerFunc(c.HotReload))
+	http.Handle("/hotreload", http.HandlerFunc(c.HotReload))
 
 	log.Println("Server running on http://localhost:3000/")
 	log.Fatal(http.ListenAndServe(":3000", nil))
