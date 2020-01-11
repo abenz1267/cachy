@@ -265,6 +265,11 @@ func walkDir(root string) ([]string, error) {
 	return files, err
 }
 
+// URL returns the hot-reload URL
+func (c Cachy) URL() string {
+	return c.reloadURL
+}
+
 // HotReload is the endpoint that gets called in order to reload on template changes
 func (c *Cachy) HotReload(w http.ResponseWriter, r *http.Request) {
 	<-c.reloadChan

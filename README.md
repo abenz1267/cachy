@@ -22,7 +22,7 @@ The "allowDuplicates" parameter checks, if templates with the same filename can 
 ### Simple Example:
 
 ```go
-c, _ := cachy.New("", "html", false, false, nil) // this will process all *.html files, no FuncMap, no duplicates.
+c, _ := cachy.New(nil, nil) // this will process all *.html files, no FuncMap, no duplicates, will search for template files within whole working dir
 go c.Watch(true) // starts the filewatcher, logging enabled
 
 _ := c.Execute(w, nil, "template", "template2") // io.Writer, data, templates...
@@ -33,10 +33,10 @@ _ := c.Execute(w, nil, "template", "template2") // io.Writer, data, templates...
 ```go
 ...
 
-c, _ := cachy.New("/reload", "html", false, false, nil)
+c, _ := cachy.New(nil, nil)
 go c.Watch(false)
 
-http.Handle("/reload", http.HandlerFunc(c.HotReload))
+http.Handle(c.URL(), http.HandlerFunc(c.HotReload))
 
 ...
 ```

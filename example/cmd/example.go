@@ -13,7 +13,7 @@ func main() {
 	go c.Watch(true)
 
 	http.Handle("/", Index(c))
-	http.Handle("/hotreload", http.HandlerFunc(c.HotReload))
+	http.Handle(c.URL(), http.HandlerFunc(c.HotReload))
 
 	log.Println("Server running on http://localhost:3000/")
 	log.Fatal(http.ListenAndServe(":3000", nil))
