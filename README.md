@@ -1,4 +1,4 @@
-[![Go Report Card](https://goreportcard.com/badge/abenz1267/cachy)](https://goreportcard.com/report/abenz1267/cachy)
+[![Go Report Card](https://goreportcard.com/badge/github.com/abenz1267/cachy)](https://goreportcard.com/report/github.com/abenz1267/cachy)
 
 # Cachy - HTML Template Caching Library
 
