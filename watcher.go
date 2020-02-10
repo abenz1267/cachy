@@ -105,8 +105,8 @@ func (c *Cachy) updateTmpl(path string) (err error) {
 		}
 	}
 
-	if length > 0 && c.reloadChan != nil {
-		c.reloadChan <- true
+	if length > 0 {
+		c.SSE.Notifier <- []byte("updated")
 	}
 	return
 }

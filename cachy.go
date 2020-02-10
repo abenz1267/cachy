@@ -24,12 +24,12 @@ type Cachy struct {
 	checksums       map[string][]byte
 	folders         []string
 	ext             string
-	reloadChan      chan bool
 	debug           bool
 	allowDuplicates bool
 	recursive       bool
 	wDir            string
 	reloadURL       string
+	SSE             *broker
 }
 
 // Params can be used to modify Cachy's default behaviour.
@@ -46,6 +46,7 @@ const errAlreadyUpdated = "already updated"
 // You can provide template folders, otherwise it will scan the whole working dir for templates.
 func New(p *Params, funcs template.FuncMap, folders ...string) (c *Cachy, err error) {
 	c = &Cachy{}
+	c.bindBroker()
 
 	if p != nil {
 		c.allowDuplicates = p.Duplicates
@@ -68,15 +69,14 @@ func New(p *Params, funcs template.FuncMap, folders ...string) (c *Cachy, err er
 	c.funcs = template.FuncMap{}
 
 	if c.reloadURL != "" {
-		c.reloadChan = make(chan bool)
-
 		c.funcs["reloadScript"] = func() template.HTML {
 			src := `<script>
-		fetch('` + c.reloadURL + `')
-		  .then(function() {
-			location.reload();
-		  })
-		</script>`
+  var client = new EventSource("` + c.reloadURL + `")
+  client.onmessage = function (msg) {
+    location.reload();
+  }
+</script>
+`
 			return template.HTML(src)
 		}
 	}
@@ -270,12 +270,6 @@ func walkDir(root string) ([]string, error) {
 // URL returns the hot-reload URL
 func (c Cachy) URL() string {
 	return c.reloadURL
-}
-
-// HotReload is the endpoint that gets called in order to reload on template changes
-func (c *Cachy) HotReload(w http.ResponseWriter, r *http.Request) {
-	<-c.reloadChan
-	w.WriteHeader(http.StatusOK)
 }
 
 func uniquePaths(s []string) []string {

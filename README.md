@@ -36,7 +36,7 @@ _ := c.Execute(w, nil, "template", "template2") // io.Writer, data, templates...
 c, _ := cachy.New(nil, nil)
 go c.Watch(false)
 
-http.Handle(c.URL(), http.HandlerFunc(c.HotReload))
+http.Handle(c.URL(), c.SSE)
 
 ...
 ```
