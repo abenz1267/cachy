@@ -11,7 +11,7 @@ import (
 )
 
 // Watch is used to monitor file changes and update the template cache.
-// You can set debug = true if you want Cachy to ouput log entries on an event.
+// You can set debug = true if you want Cachy to output log entries on an event.
 func (c *Cachy) Watch(debug bool) error {
 	c.debug = debug
 
