@@ -21,44 +21,13 @@ func (c *Cachy) Watch(debug bool) error {
 	}
 	defer watcher.Close()
 
+	c.addFolders(watcher)
+
 	done := make(chan bool)
 
-	go func() {
-		for {
-			select {
-			case event := <-watcher.Events:
-				if strings.HasSuffix(event.Name, c.ext) {
-					clearPath := strings.TrimPrefix(strings.TrimSuffix(event.Name, c.ext), c.wDir+"/")
+	go c.watch(watcher)
 
-					if event.Op == fsnotify.Write || event.Op == fsnotify.Create {
-						if err := c.updateTmpl(clearPath); err != nil && debug {
-							if err.Error() != ERROR_UPDATED_ALREADY {
-								c.log(fmt.Sprintf("couldn't cache template %s. %s", clearPath, err))
-							}
-						} else if debug {
-							c.log(fmt.Sprintf("update template %s", clearPath))
-						}
-					} else if event.Op == fsnotify.Remove || event.Op == fsnotify.Rename {
-						deleteTmpl(clearPath, c)
-					}
-				}
-
-			case err := <-watcher.Errors:
-				c.log(err.Error())
-			}
-		}
-	}()
-
-	counter := 0
-	for _, v := range c.folders {
-		v = filepath.Join(c.wDir, v)
-		if err := watcher.Add(v); err != nil {
-			c.log(fmt.Sprintf("Cachy: %s:%s", err, v))
-			counter++
-		}
-	}
-
-	if counter == len(c.folders) {
+	if len(c.folders) == 0 {
 		c.log("nothing to watch, closing watcher")
 		done <- true
 	}
@@ -66,6 +35,43 @@ func (c *Cachy) Watch(debug bool) error {
 
 	<-done
 	return nil
+}
+
+func (c *Cachy) watch(w *fsnotify.Watcher) {
+	for {
+		select {
+		case event := <-w.Events:
+			if strings.HasSuffix(event.Name, c.ext) {
+				clearPath := strings.TrimPrefix(strings.TrimSuffix(event.Name, c.ext), c.wDir+"/")
+
+				if event.Op == fsnotify.Write || event.Op == fsnotify.Create {
+					if err := c.updateTmpl(clearPath); err != nil && c.debug {
+						if err.Error() != errAlreadyUpdated {
+							c.log(fmt.Sprintf("couldn't cache template %s. %s", clearPath, err))
+						}
+					} else if c.debug {
+						c.log(fmt.Sprintf("update template %s", clearPath))
+					}
+				} else if event.Op == fsnotify.Remove || event.Op == fsnotify.Rename {
+					deleteTmpl(clearPath, c)
+				}
+			}
+
+		case err := <-w.Errors:
+			c.log(err.Error())
+		}
+	}
+}
+
+func (c *Cachy) addFolders(w *fsnotify.Watcher) {
+	counter := 0
+	for _, v := range c.folders {
+		v = filepath.Join(c.wDir, v)
+		if err := w.Add(v); err != nil {
+			c.log(fmt.Sprintf("Cachy: %s:%s", err, v))
+			counter++
+		}
+	}
 }
 
 func (c *Cachy) log(msg string) {

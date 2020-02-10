@@ -1,3 +1,4 @@
+// Package cachy is a package that can be used to cache and execute templates.
 package cachy
 
 import (
@@ -31,6 +32,7 @@ type Cachy struct {
 	reloadURL       string
 }
 
+// Params can be used to modify Cachy's default behaviour.
 type Params struct {
 	URL        string
 	Ext        string
@@ -38,7 +40,7 @@ type Params struct {
 	Recursive  bool
 }
 
-const ERROR_UPDATED_ALREADY = "already updated"
+const errAlreadyUpdated = "already updated"
 
 // New processes all templates and returns a populated Cachy struct.
 // You can provide template folders, otherwise it will scan the whole working dir for templates.
@@ -52,7 +54,7 @@ func New(p *Params, funcs template.FuncMap, folders ...string) (c *Cachy, err er
 		c.reloadURL = p.URL
 
 		if strings.HasPrefix(p.Ext, ".") {
-			return nil, errors.New("Extension can't start with a '.'")
+			return nil, errors.New("extension can't start with a '.'")
 		}
 	} else {
 		c.ext = ".html"
@@ -213,7 +215,7 @@ func (c *Cachy) cache(path, file string, update bool) (length int, err error) {
 
 	if !update {
 		if _, exists := c.templates[clearPath]; exists {
-			return len(tmplBytes), fmt.Errorf("Template '%s' already exists", clearPath)
+			return len(tmplBytes), fmt.Errorf("template '%s' already exists", clearPath)
 		}
 	}
 
@@ -224,7 +226,7 @@ func (c *Cachy) cache(path, file string, update bool) (length int, err error) {
 
 	checksum := h.Sum(tmplBytes)
 	if bytes.Equal(c.checksums[clearPath], checksum) {
-		return 0, errors.New(ERROR_UPDATED_ALREADY)
+		return 0, errors.New(errAlreadyUpdated)
 	}
 
 	c.checksums[clearPath] = checksum
@@ -238,7 +240,7 @@ func (c *Cachy) cache(path, file string, update bool) (length int, err error) {
 
 	c.templates[clearPath] = tmpl
 
-	for k, _ := range c.multiTmpls {
+	for k := range c.multiTmpls {
 		templates := strings.Split(k, ",")
 
 		for _, v := range templates {
